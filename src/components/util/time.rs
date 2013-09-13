@@ -7,7 +7,7 @@ use extra::time::precise_time_ns;
 use std::cell::Cell;
 use std::comm::{Port, SharedChan};
 use extra::sort::tim_sort;
-use std::iterator::AdditiveIterator;
+use std::iter::AdditiveIterator;
 use extra::treemap::TreeMap;
 
 // front-end representation of the profiler used to communicate with the profiler
