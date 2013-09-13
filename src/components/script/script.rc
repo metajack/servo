@@ -144,4 +144,5 @@ pub mod script_task;
 
 
 // "New" (as of 2013-08) style system, not used yet but included to avoid bitrot.
-mod style;
+// FIXME (rust#9129): work around rustc crash
+//mod style;
