@@ -183,7 +183,7 @@ impl LineboxScanner {
         match box {
             ImageRenderBoxClass(image_box) => {
                 let size = image_box.image.get_size();
-                let height = Au::from_px(size.unwrap_or_default(Size2D(0, 0)).height);
+                let height = Au::from_px(size.unwrap_or(Size2D(0, 0)).height);
                 image_box.base.position.size.height = height;
                 debug!("box_height: found image height: %?", height);
                 height

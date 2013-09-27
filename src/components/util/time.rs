@@ -4,7 +4,7 @@
 
 // Timing functions.
 use std::comm::{Port, SharedChan};
-use std::iterator::AdditiveIterator;
+use std::iter::AdditiveIterator;
 use std::rt::io::timer::Timer;
 use std::task::spawn_with;
 
