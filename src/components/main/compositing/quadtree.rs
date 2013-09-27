@@ -8,11 +8,12 @@
 use geom::point::Point2D;
 use geom::size::Size2D;
 use geom::rect::Rect;
-use std::uint::{div_ceil, next_power_of_two};
-use std::vec::build_sized;
-use std::util::replace;
 use gfx::render_task::BufferRequest;
 use servo_msg::compositor_msg::Tile;
+
+use std::uint::{div_ceil, next_power_of_two};
+use std::util::replace;
+use std::vec;
 
 static HEADER: &'static str = "<!DOCTYPE html><html>";
 
@@ -622,7 +623,7 @@ impl<T: Tile> QuadtreeNode<T> {
             }
         };
         
-        let quads_to_check = build_sized(4, builder);
+        let quads_to_check = vec::build(Some(4), builder);
         
         let mut request = ~[];
         let mut unused = ~[];

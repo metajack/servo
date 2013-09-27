@@ -490,7 +490,7 @@ impl RenderBox {
         let px_width = if attr_width.is_some() {
             attr_width.unwrap()
         } else {
-            image_box.image.get_size().unwrap_or_default(Size2D(0, 0)).width
+            image_box.image.get_size().unwrap_or(Size2D(0, 0)).width
         };
 
         Au::from_px(px_width)
@@ -516,7 +516,7 @@ impl RenderBox {
         let px_height = if attr_height.is_some() {
             attr_height.unwrap()
         } else {
-            image_box.image.get_size().unwrap_or_default(Size2D(0, 0)).height
+            image_box.image.get_size().unwrap_or(Size2D(0, 0)).height
         };
 
         Au::from_px(px_height)
