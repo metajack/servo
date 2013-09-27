@@ -1,3 +1,5 @@
+NULL =
+
 # Tests for these submodules will not be run by the default `make check` target.
 SLOW_TESTS += \
 	mozjs \
@@ -212,7 +214,6 @@ CFLAGS_fontconfig += \
 	"-I$(S)src/platform/android/libexpat/expat/lib" \
 	"-I$(S)src/platform/android/libfreetype2/include" \
     $(NULL)
-endif
 
 DEPS_skia += \
 	libfreetype2 \
@@ -227,3 +228,5 @@ NATIVE_BUILD += \
 	libexpat \
 	fontconfig \
 	$(NULL)
+endif
+
