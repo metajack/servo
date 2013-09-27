@@ -11,7 +11,7 @@
 
 extern mod azure;
 extern mod std;
-extern mod geom;
+extern mod geom = "rust-geom";
 extern mod extra;
 
 pub mod compositor_msg;
