@@ -2,15 +2,15 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-use layout::box::Box;
+use layout::box_::Box;
 use layout::construct::{ConstructionResult, NoConstructionResult};
 use layout::wrapper::LayoutNode;
 
 use extra::arc::Arc;
 use script::dom::node::AbstractNode;
 use servo_util::range::Range;
-use servo_util::slot::{MutSlotRef, SlotRef};
 use std::cast;
+use std::cell::{Ref, RefMut};
 use std::iter::Enumerate;
 use std::libc::uintptr_t;
 use std::vec::VecIterator;
@@ -31,7 +31,7 @@ impl NodeRange {
     }
 }
 
-struct ElementMapping {
+pub struct ElementMapping {
     priv entries: ~[NodeRange],
 }
 
@@ -46,7 +46,7 @@ impl ElementMapping {
         self.entries.push(NodeRange::new(node, range))
     }
 
-    pub fn each(&self, callback: &fn(nr: &NodeRange) -> bool) -> bool {
+    pub fn each(&self, callback: |nr: &NodeRange| -> bool) -> bool {
         for nr in self.entries.iter() {
             if !callback(nr) {
                 break
@@ -63,14 +63,14 @@ impl ElementMapping {
         let entries = &mut self.entries;
 
         debug!("--- Old boxes: ---");
-        for (i, box) in old_boxes.iter().enumerate() {
-            debug!("{:u} --> {:s}", i, box.debug_str());
+        for (i, box_) in old_boxes.iter().enumerate() {
+            debug!("{:u} --> {:s}", i, box_.debug_str());
         }
         debug!("------------------");
 
         debug!("--- New boxes: ---");
-        for (i, box) in new_boxes.iter().enumerate() {
-            debug!("{:u} --> {:s}", i, box.debug_str());
+        for (i, box_) in new_boxes.iter().enumerate() {
+            debug!("{:u} --> {:s}", i, box_.debug_str());
         }
         debug!("------------------");
 
@@ -157,30 +157,25 @@ pub trait LayoutDataAccess {
     /// Borrows the layout data without checks.
     ///
     /// FIXME(pcwalton): Make safe.
-    unsafe fn borrow_layout_data_unchecked<'a>(&'a self) -> &'a Option<~LayoutData>;
+    // unsafe fn borrow_layout_data_unchecked<'a>(&'a self) -> &'a Option<~LayoutData>;
     /// Borrows the layout data immutably. Fails on a conflicting borrow.
-    fn borrow_layout_data<'a>(&'a self) -> SlotRef<'a,Option<~LayoutData>>;
+    fn borrow_layout_data<'a>(&'a self) -> Ref<'a,Option<~LayoutData>>;
     /// Borrows the layout data mutably. Fails on a conflicting borrow.
-    fn mutate_layout_data<'a>(&'a self) -> MutSlotRef<'a,Option<~LayoutData>>;
+    fn mutate_layout_data<'a>(&'a self) -> RefMut<'a,Option<~LayoutData>>;
 }
 
-impl<'self> LayoutDataAccess for LayoutNode<'self> {
+impl<'ln> LayoutDataAccess for LayoutNode<'ln> {
     #[inline(always)]
-    unsafe fn borrow_layout_data_unchecked<'a>(&'a self) -> &'a Option<~LayoutData> {
-        cast::transmute(self.get().layout_data.borrow_unchecked())
-    }
-
-    #[inline(always)]
-    fn borrow_layout_data<'a>(&'a self) -> SlotRef<'a,Option<~LayoutData>> {
+    fn borrow_layout_data<'a>(&'a self) -> Ref<'a,Option<~LayoutData>> {
         unsafe {
             cast::transmute(self.get().layout_data.borrow())
         }
     }
 
     #[inline(always)]
-    fn mutate_layout_data<'a>(&'a self) -> MutSlotRef<'a,Option<~LayoutData>> {
+    fn mutate_layout_data<'a>(&'a self) -> RefMut<'a,Option<~LayoutData>> {
         unsafe {
-            cast::transmute(self.get().layout_data.mutate())
+            cast::transmute(self.get().layout_data.borrow_mut())
         }
     }
 }

@@ -11,11 +11,8 @@ use layout::wrapper::LayoutNode;
 
 use extra::arc::{Arc, RWArc};
 use std::cast;
-use std::cell::Cell;
-use std::comm;
 use std::libc::uintptr_t;
 use std::rt;
-use std::task;
 use std::vec;
 use style::{TNode, Stylist, cascade};
 
@@ -27,17 +24,18 @@ pub trait MatchMethods {
     fn cascade_subtree(&self, parent: Option<LayoutNode>);
 }
 
-impl<'self> MatchMethods for LayoutNode<'self> {
+impl<'ln> MatchMethods for LayoutNode<'ln> {
     fn match_node(&self, stylist: &Stylist) {
-        let applicable_declarations = do self.with_element |element| {
+        let applicable_declarations = self.with_element(|element| {
             let style_attribute = match *element.style_attribute() {
                 None => None,
                 Some(ref style_attribute) => Some(style_attribute)
             };
             stylist.get_applicable_declarations(self, style_attribute, None)
-        };
+        });
 
-        match *self.mutate_layout_data().ptr {
+        let mut layout_data_ref = self.mutate_layout_data();
+        match *layout_data_ref.get() {
             Some(ref mut layout_data) => {
                 layout_data.applicable_declarations = applicable_declarations
             }
@@ -56,8 +54,7 @@ impl<'self> MatchMethods for LayoutNode<'self> {
             }
         }
 
-        let (port, chan) = comm::stream();
-        let chan = comm::SharedChan::new(chan);
+        let (port, chan) = SharedChan::new();
         let mut num_spawned = 0;
 
         for nodes in nodes_per_task.move_iter() {
@@ -73,19 +70,20 @@ impl<'self> MatchMethods for LayoutNode<'self> {
                     cast::transmute(nodes)
                 };
 
-                do task::spawn_with((evil, stylist)) |(evil, stylist)| {
-                    let nodes: ~[LayoutNode] = unsafe {
-                        cast::transmute(evil)
-                    };
+                let evil = Some(evil);
+                spawn(proc() {
+                    let mut evil = evil;
+                    stylist.read(|stylist| {
+                        let nodes: ~[LayoutNode] = unsafe {
+                            cast::transmute(evil.take_unwrap())
+                        };
 
-                    let nodes = Cell::new(nodes);
-                    do stylist.read |stylist| {
-                        for node in nodes.take().move_iter() {
+                        for node in nodes.move_iter() {
                             node.match_node(stylist);
                         }
-                    }
+                    });
                     chan.send(());
-                }
+                });
                 num_spawned += 1;
             }
         }
@@ -100,15 +98,18 @@ impl<'self> MatchMethods for LayoutNode<'self> {
             None => None
         };
 
-        let computed_values = unsafe {
-            Arc::new(cascade(self.borrow_layout_data_unchecked()
-                                 .as_ref()
-                                 .unwrap()
-                                 .applicable_declarations,
-                             parent_style.map(|parent_style| parent_style.get())))
+        let computed_values = {
+            let layout_data_ref = self.borrow_layout_data();
+            Arc::new(cascade(layout_data_ref
+                                               .get()
+                                               .as_ref()
+                                               .unwrap()
+                                               .applicable_declarations,
+                                               parent_style.map(|parent_style| parent_style.get())))
         };
 
-        match *self.mutate_layout_data().ptr {
+        let mut layout_data_ref = self.mutate_layout_data();
+        match *layout_data_ref.get() {
             None => fail!("no layout data"),
             Some(ref mut layout_data) => {
                 let style = &mut layout_data.style;
