@@ -20,12 +20,13 @@ use dom::nodelist::{NodeList};
 use dom::text::Text;
 
 use js::jsapi::{JSObject, JSContext};
-use servo_util::slot::{MutSlotRef, Slot, SlotRef};
 use std::cast::transmute;
 use std::cast;
+use std::ptr;
 use std::unstable::raw::Box;
 use std::util;
 use std::iter::Filter;
+use std::cell::{RefCell, Ref, RefMut};
 
 //
 // The basic Node structure
@@ -37,7 +38,7 @@ use std::iter::Filter;
 /// FIXME: This should be replaced with a trait once they can inherit from structs.
 #[deriving(Eq)]
 pub struct AbstractNode {
-    priv obj: *mut Box<Node>,
+    priv obj: *mut (),
 }
 
 /// An HTML node.
@@ -110,14 +111,14 @@ impl Drop for Node {
 
 /// Encapsulates the abstract layout data.
 pub struct LayoutDataRef {
-    priv data: Slot<Option<*()>>,
+    priv data: RefCell<*()>,
 }
 
 impl LayoutDataRef {
     #[inline]
     pub fn init() -> LayoutDataRef {
         LayoutDataRef {
-            data: Slot::init(None),
+            data: RefCell::new(ptr::null()),
         }
     }
 
@@ -125,14 +126,14 @@ impl LayoutDataRef {
     #[inline]
     pub unsafe fn from_data<T>(data: ~T) -> LayoutDataRef {
         LayoutDataRef {
-            data: Slot::init(Some(cast::transmute(data))),
+            data: RefCell::new(cast::transmute(data)),
         }
     }
 
     /// Returns true if this layout data is present or false otherwise.
     #[inline]
     pub fn is_present(&self) -> bool {
-        self.data.get().is_some()
+        self.data.get().is_not_null()
     }
 
     /// Borrows the layout data immutably, *asserting that there are no mutators*. Bad things will
@@ -141,17 +142,15 @@ impl LayoutDataRef {
     ///
     /// FIXME(pcwalton): Enforce this invariant via the type system. Will require traversal
     /// functions to be trusted, but c'est la vie.
-    #[inline]
-    pub unsafe fn borrow_unchecked<'a>(&'a self) -> &'a () {
-        cast::transmute(self.data.borrow_unchecked())
-    }
+    // #[inline]
+    // pub unsafe fn borrow_unchecked<'a>(&'a self) -> &'a () {
+    //     self.data.borrow_unchecked()
+    // }
 
     /// Borrows the layout data immutably. This function is *not* thread-safe.
     #[inline]
-    pub fn borrow<'a>(&'a self) -> SlotRef<'a,()> {
-        unsafe {
-            cast::transmute(self.data.borrow())
-        }
+    pub fn borrow<'a>(&'a self) -> Ref<'a,*()> {
+            self.data.borrow()
     }
 
     /// Borrows the layout data mutably. This function is *not* thread-safe.
@@ -160,10 +159,8 @@ impl LayoutDataRef {
     /// prevent CSS selector matching from mutably accessing nodes it's not supposed to and racing
     /// on it. This has already resulted in one bug!
     #[inline]
-    pub fn mutate<'a>(&'a self) -> MutSlotRef<'a,()> {
-        unsafe {
-            cast::transmute(self.data.mutate())
-        }
+    pub fn borrow_mut<'a>(&'a self) -> RefMut<'a,*()> {
+        self.data.borrow_mut()
     }
 }
 
@@ -193,13 +190,15 @@ impl Clone for AbstractNode {
 impl AbstractNode {
     pub fn node<'a>(&'a self) -> &'a Node {
         unsafe {
-            &(*self.obj).data
+            let box_: *mut Box<Node> = cast::transmute(self.obj);
+            &(*box_).data
         }
     }
 
     pub fn mut_node<'a>(&'a self) -> &'a mut Node {
         unsafe {
-            &mut (*self.obj).data
+            let box_: *mut Box<Node> = cast::transmute(self.obj);
+            &mut (*box_).data
         }
     }
 
@@ -217,20 +216,20 @@ impl AbstractNode {
 
     pub fn is_element(&self) -> bool {
         match self.type_id() {
-            ElementNodeTypeId(*) => true,
+            ElementNodeTypeId(..) => true,
             _ => false
         }
     }
 
     pub fn is_document(&self) -> bool {
         match self.type_id() {
-            DocumentNodeTypeId(*) => true,
+            DocumentNodeTypeId(..) => true,
             _ => false
         }
     }
 }
 
-impl<'self> AbstractNode {
+impl<'a> AbstractNode {
     // Unsafe accessors
 
     pub unsafe fn as_cacheable_wrapper(&self) -> @mut Reflectable {
@@ -252,7 +251,7 @@ impl<'self> AbstractNode {
     /// FIXME(pcwalton): Mark unsafe?
     pub fn from_box<T>(ptr: *mut Box<T>) -> AbstractNode {
         AbstractNode {
-            obj: ptr as *mut Box<Node>
+            obj: ptr as *mut ()
         }
     }
 
@@ -291,27 +290,27 @@ impl<'self> AbstractNode {
     // Downcasting borrows
     //
 
-    pub fn transmute<T, R>(self, f: &fn(&T) -> R) -> R {
+    pub fn transmute<'a, T, R>(self, f: |&'a T| -> R) -> R {
         unsafe {
             let node_box: *mut Box<Node> = transmute(self.obj);
             let node = &mut (*node_box).data;
             let old = node.abstract;
             node.abstract = Some(self);
-            let box: *Box<T> = transmute(self.obj);
-            let rv = f(&(*box).data);
+            let box_: *Box<T> = transmute(self.obj);
+            let rv = f(&(*box_).data);
             node.abstract = old;
             rv
         }
     }
 
-    pub fn transmute_mut<T, R>(self, f: &fn(&mut T) -> R) -> R {
+    pub fn transmute_mut<T, R>(self, f: |&mut T| -> R) -> R {
         unsafe {
             let node_box: *mut Box<Node> = transmute(self.obj);
             let node = &mut (*node_box).data;
             let old = node.abstract;
             node.abstract = Some(self);
-            let box: *Box<T> = transmute(self.obj);
-            let rv = f(cast::transmute(&(*box).data));
+            let box_: *Box<T> = transmute(self.obj);
+            let rv = f(cast::transmute(&(*box_).data));
             node.abstract = old;
             rv
         }
@@ -323,14 +322,14 @@ impl<'self> AbstractNode {
         self.is_text() || self.is_comment()
     }
 
-    pub fn with_imm_characterdata<R>(self, f: &fn(&CharacterData) -> R) -> R {
+    pub fn with_imm_characterdata<R>(self, f: |&CharacterData| -> R) -> R {
         if !self.is_characterdata() {
             fail!(~"node is not characterdata");
         }
         self.transmute(f)
     }
 
-    pub fn with_mut_characterdata<R>(self, f: &fn(&mut CharacterData) -> R) -> R {
+    pub fn with_mut_characterdata<R>(self, f: |&mut CharacterData| -> R) -> R {
         if !self.is_characterdata() {
             fail!(~"node is not characterdata");
         }
@@ -341,14 +340,14 @@ impl<'self> AbstractNode {
         self.type_id() == DoctypeNodeTypeId
     }
 
-    pub fn with_imm_doctype<R>(self, f: &fn(&DocumentType) -> R) -> R {
+    pub fn with_imm_doctype<R>(self, f: |&DocumentType| -> R) -> R {
         if !self.is_doctype() {
             fail!(~"node is not doctype");
         }
         self.transmute(f)
     }
 
-    pub fn with_mut_doctype<R>(self, f: &fn(&mut DocumentType) -> R) -> R {
+    pub fn with_mut_doctype<R>(self, f: |&mut DocumentType| -> R) -> R {
         if !self.is_doctype() {
             fail!(~"node is not doctype");
         }
@@ -375,14 +374,14 @@ impl<'self> AbstractNode {
         }
     }
 
-    pub fn with_imm_text<R>(self, f: &fn(&Text) -> R) -> R {
+    pub fn with_imm_text<R>(self, f: |&Text| -> R) -> R {
         if !self.is_text() {
             fail!(~"node is not text");
         }
         self.transmute(f)
     }
 
-    pub fn with_mut_text<R>(self, f: &fn(&mut Text) -> R) -> R {
+    pub fn with_mut_text<R>(self, f: |&mut Text| -> R) -> R {
         if !self.is_text() {
             fail!(~"node is not text");
         }
@@ -390,7 +389,7 @@ impl<'self> AbstractNode {
     }
 
     // FIXME: This should be doing dynamic borrow checking for safety.
-    pub fn with_imm_element<R>(self, f: &fn(&Element) -> R) -> R {
+    pub fn with_imm_element<R>(self, f: |&Element| -> R) -> R {
         if !self.is_element() {
             fail!(~"node is not an element");
         }
@@ -398,7 +397,7 @@ impl<'self> AbstractNode {
     }
 
     // FIXME: This should be doing dynamic borrow checking for safety.
-    pub fn as_mut_element<R>(self, f: &fn(&mut Element) -> R) -> R {
+    pub fn as_mut_element<R>(self, f: |&mut Element| -> R) -> R {
         if !self.is_element() {
             fail!(~"node is not an element");
         }
@@ -413,7 +412,7 @@ impl<'self> AbstractNode {
         }
     }
 
-    pub fn with_mut_image_element<R>(self, f: &fn(&mut HTMLImageElement) -> R) -> R {
+    pub fn with_mut_image_element<R>(self, f: |&mut HTMLImageElement| -> R) -> R {
         if !self.is_image_element() {
             fail!(~"node is not an image element");
         }
@@ -424,7 +423,7 @@ impl<'self> AbstractNode {
         self.type_id() == ElementNodeTypeId(HTMLIframeElementTypeId)
     }
 
-    pub fn with_mut_iframe_element<R>(self, f: &fn(&mut HTMLIFrameElement) -> R) -> R {
+    pub fn with_mut_iframe_element<R>(self, f: |&mut HTMLIFrameElement| -> R) -> R {
         if !self.is_iframe_element() {
             fail!(~"node is not an iframe element");
         }
@@ -440,12 +439,12 @@ impl<'self> AbstractNode {
     }
 
     pub unsafe fn raw_object(self) -> *mut Box<Node> {
-        self.obj
+        cast::transmute(self.obj)
     }
 
     pub fn from_raw(raw: *mut Box<Node>) -> AbstractNode {
         AbstractNode {
-            obj: raw
+            obj: raw as *mut ()
         }
     }
 
@@ -478,10 +477,6 @@ impl<'self> AbstractNode {
     //
     // Convenience accessors
     //
-
-    fn is_leaf(&self) -> bool {
-        self.first_child().is_none()
-    }
 
     pub fn children(&self) -> AbstractNodeChildrenIterator {
         self.node().children()
@@ -610,35 +605,6 @@ impl AbstractNode {
         child_node.set_next_sibling(None);
         child_node.set_parent_node(None);
     }
-
-    //
-    // Low-level pointer stitching wrappers
-    //
-
-    fn set_parent_node(&self, new_parent_node: Option<AbstractNode>) {
-        let node = self.mut_node();
-        node.set_parent_node(new_parent_node)
-    }
-
-    fn set_first_child(&self, new_first_child: Option<AbstractNode>) {
-        let node = self.mut_node();
-        node.set_first_child(new_first_child)
-    }
-
-    fn set_last_child(&self, new_last_child: Option<AbstractNode>) {
-        let node = self.mut_node();
-        node.set_last_child(new_last_child)
-    }
-    
-    fn set_prev_sibling(&self, new_prev_sibling: Option<AbstractNode>) {
-        let node = self.mut_node();
-        node.set_prev_sibling(new_prev_sibling)
-    }
-    
-    fn set_next_sibling(&self, new_next_sibling: Option<AbstractNode>) {
-        let node = self.mut_node();
-        node.set_next_sibling(new_next_sibling)
-    }
 }
 
 //
@@ -652,9 +618,9 @@ pub struct AbstractNodeChildrenIterator {
 impl Iterator<AbstractNode> for AbstractNodeChildrenIterator {
     fn next(&mut self) -> Option<AbstractNode> {
         let node = self.current_node;
-        self.current_node = do self.current_node.and_then |node| {
+        self.current_node = self.current_node.and_then(|node| {
             node.next_sibling()
-        };
+        });
         node
     }
 }
@@ -825,17 +791,17 @@ impl Node {
 
     pub fn NodeName(&self, abstract_self: AbstractNode) -> DOMString {
         match self.type_id {
-            ElementNodeTypeId(*) => {
-                do abstract_self.with_imm_element |element| {
+            ElementNodeTypeId(..) => {
+                abstract_self.with_imm_element(|element| {
                     element.TagName()
-                }
+                })
             }
             CommentNodeTypeId => ~"#comment",
             TextNodeTypeId => ~"#text",
             DoctypeNodeTypeId => {
-                do abstract_self.with_imm_doctype |doctype| {
+                abstract_self.with_imm_doctype(|doctype| {
                     doctype.name.clone()
-                }
+                })
             },
             DocumentFragmentNodeTypeId => ~"#document-fragment",
             DocumentNodeTypeId(_) => ~"#document"
@@ -848,7 +814,7 @@ impl Node {
 
     pub fn GetOwnerDocument(&self) -> Option<AbstractDocument> {
         match self.type_id {
-            ElementNodeTypeId(*) |
+            ElementNodeTypeId(..) |
             CommentNodeTypeId |
             TextNodeTypeId |
             DoctypeNodeTypeId |
@@ -889,9 +855,9 @@ impl Node {
         match self.type_id {
             // ProcessingInstruction
             CommentNodeTypeId | TextNodeTypeId => {
-                do abstract_self.with_imm_characterdata() |characterdata| {
+                abstract_self.with_imm_characterdata(|characterdata| {
                     Some(characterdata.Data())
-                }
+                })
             }
             _ => {
                 None
@@ -906,21 +872,21 @@ impl Node {
 
     pub fn GetTextContent(&self, abstract_self: AbstractNode) -> Option<DOMString> {
         match self.type_id {
-          DocumentFragmentNodeTypeId | ElementNodeTypeId(*) => {
+          DocumentFragmentNodeTypeId | ElementNodeTypeId(..) => {
             let mut content = ~"";
             for node in abstract_self.traverse_preorder() {
                 if node.is_text() {
-                    do node.with_imm_text() |text| {
+                    node.with_imm_text(|text| {
                         content = content + text.element.Data();
-                    }
+                    })
                 }
             }
             Some(content)
           }
           CommentNodeTypeId | TextNodeTypeId => {
-            do abstract_self.with_imm_characterdata() |characterdata| {
+            abstract_self.with_imm_characterdata(|characterdata| {
                 Some(characterdata.Data())
-            }
+            })
           }
           DoctypeNodeTypeId | DocumentNodeTypeId(_) => {
             None
@@ -968,9 +934,9 @@ impl Node {
 
         // Step 1.
         match parent.type_id() {
-            DocumentNodeTypeId(*) |
+            DocumentNodeTypeId(..) |
             DocumentFragmentNodeTypeId |
-            ElementNodeTypeId(*) => (),
+            ElementNodeTypeId(..) => (),
             _ => {
                 return Err(HierarchyRequest);
             },
@@ -999,7 +965,7 @@ impl Node {
             TextNodeTypeId |
             // ProcessingInstructionNodeTypeId |
             CommentNodeTypeId => (),
-            DocumentNodeTypeId(*) => return Err(HierarchyRequest),
+            DocumentNodeTypeId(..) => return Err(HierarchyRequest),
         }
         
         // Step 5.
@@ -1241,7 +1207,7 @@ impl Node {
                           -> ErrorResult {
         let value = null_str_as_empty(&value);
         match self.type_id {
-          DocumentFragmentNodeTypeId | ElementNodeTypeId(*) => {
+          DocumentFragmentNodeTypeId | ElementNodeTypeId(..) => {
             // Step 1-2.
             let node = if value.len() == 0 {
                 None
@@ -1255,13 +1221,13 @@ impl Node {
           CommentNodeTypeId | TextNodeTypeId => {
             self.wait_until_safe_to_modify_dom();
 
-            do abstract_self.with_mut_characterdata() |characterdata| {
+            abstract_self.with_mut_characterdata(|characterdata| {
                 characterdata.data = value.clone();
 
                 // Notify the document that the content of this node is different
                 let document = self.owner_doc();
                 document.document().content_changed();
-            }
+            })
           }
           DoctypeNodeTypeId | DocumentNodeTypeId(_) => {}
         }

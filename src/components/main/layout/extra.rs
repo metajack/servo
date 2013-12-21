@@ -13,14 +13,14 @@ pub trait LayoutAuxMethods {
     fn initialize_style_for_subtree(self);
 }
 
-impl<'self> LayoutAuxMethods for LayoutNode<'self> {
+impl<'ln> LayoutAuxMethods for LayoutNode<'ln> {
     /// Resets layout data and styles for the node.
     ///
     /// FIXME(pcwalton): Do this as part of box building instead of in a traversal.
     fn initialize_layout_data(self) {
-        let layout_data_handle = self.mutate_layout_data();
-        match *layout_data_handle.ptr {
-            None => *layout_data_handle.ptr = Some(~LayoutData::new()),
+        let mut layout_data_ref = self.mutate_layout_data();
+        match *layout_data_ref.get() {
+            None => *layout_data_ref.get() = Some(~LayoutData::new()),
             Some(_) => {}
         }
     }
