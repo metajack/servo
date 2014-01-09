@@ -150,7 +150,7 @@ impl LayoutDataRef {
     /// Borrows the layout data immutably. This function is *not* thread-safe.
     #[inline]
     pub fn borrow<'a>(&'a self) -> Ref<'a,*()> {
-            self.data.borrow()
+        self.data.borrow()
     }
 
     /// Borrows the layout data mutably. This function is *not* thread-safe.

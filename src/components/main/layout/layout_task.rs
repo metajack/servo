@@ -207,15 +207,17 @@ impl LayoutTask {
                   profiler_chan: ProfilerChan,
                   shutdown_chan: Chan<()>) {
         spawn(proc() {
-            let mut layout = LayoutTask::new(id,
-                                             port,
-                                             constellation_chan,
-                                             script_chan,
-                                             render_chan,
-                                             img_cache_task,
-                                             &opts,
-                                             profiler_chan);
-            layout.start();
+            { // Ensures layout task is destroyed before we send shutdown message
+                let mut layout = LayoutTask::new(id,
+                                                 port,
+                                                 constellation_chan,
+                                                 script_chan,
+                                                 render_chan,
+                                                 img_cache_task,
+                                                 &opts,
+                                                 profiler_chan);
+                layout.start();
+            }
             shutdown_chan.send(());
         });
     }
