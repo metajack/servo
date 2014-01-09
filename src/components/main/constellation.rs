@@ -315,6 +315,7 @@ impl Constellation {
     fn handle_request(&mut self, request: Msg) -> bool {
         match request {
             ExitMsg(sender) => {
+                debug!("constellation exiting");
                 self.handle_exit(sender);
                 return false;
             }

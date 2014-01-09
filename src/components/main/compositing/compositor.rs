@@ -159,6 +159,13 @@ impl IOCompositor {
             // Check for new messages coming from the rendering task.
             self.handle_message();
 
+            if (self.done) {
+                // We have exited the compositor and passing window
+                // messages to script may crash.
+                debug!("Exiting the compositor due to a request from script.");
+                break;
+            }
+
             // Check for messages coming from the windowing system.
             self.handle_window_message(self.window.recv());
 
@@ -198,7 +205,10 @@ impl IOCompositor {
             match self.port.try_recv() {
                 None => break,
 
-                Some(Exit) => self.done = true,
+                Some(Exit(chan)) => {
+                    self.done = true;
+                    chan.send(());
+                }
 
                 Some(ChangeReadyState(ready_state)) => {
                     self.window.set_ready_state(ready_state);

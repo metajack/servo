@@ -53,7 +53,9 @@ impl ScriptListener for CompositorChan {
     }
 
     fn close(&self) {
-        self.chan.send(Exit);
+        let (port, chan) = Chan::new();
+        self.chan.send(Exit(chan));
+        port.recv();
     }
 
 }
@@ -114,7 +116,7 @@ impl CompositorChan {
 /// Messages from the painting task and the constellation task to the compositor task.
 pub enum Msg {
     /// Requests that the compositor shut down.
-    Exit,
+    Exit(Chan<()>),
     /// Requests the compositor's graphics metadata. Graphics metadata is what the renderer needs
     /// to create surfaces that the compositor can see. On Linux this is the X display; on Mac this
     /// is the pixel format.
