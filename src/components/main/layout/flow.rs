@@ -127,7 +127,7 @@ pub fn base<'a>(this: &'a Flow) -> &'a FlowData {
 }
 
 /// Iterates over the children of this immutable flow.
-pub fn imm_child_iter<'a>(flow: &'a Flow) -> DListIterator<'a,~Flow:> {
+pub fn imm_child_iter<'a>(flow: &'a Flow) -> DListIterator<'a,~Flow> {
     base(flow).children.iter()
 }
 
@@ -140,12 +140,12 @@ pub fn mut_base<'a>(this: &'a mut Flow) -> &'a mut FlowData {
 }
 
 /// Returns the last child of this flow.
-pub fn last_child<'a>(flow: &'a mut Flow) -> Option<&'a mut ~Flow:> {
+pub fn last_child<'a>(flow: &'a mut Flow) -> Option<&'a mut ~Flow> {
     mut_base(flow).children.back_mut()
 }
 
 /// Iterates over the children of this flow.
-pub fn child_iter<'a>(flow: &'a mut Flow) -> MutDListIterator<'a,~Flow:> {
+pub fn child_iter<'a>(flow: &'a mut Flow) -> MutDListIterator<'a,~Flow> {
     mut_base(flow).children.mut_iter()
 }
 
@@ -183,13 +183,13 @@ pub trait MutableFlowUtils {
     // Mutators
 
     /// Adds a new flow as a child of this flow.
-    fn add_new_child(self, new_child: ~Flow:);
+    fn add_new_child(self, new_child: ~Flow);
 
     /// Invokes a closure with the first child of this flow.
-    fn with_first_child<R>(self, f: |Option<&mut ~Flow:>| -> R) -> R;
+    fn with_first_child<R>(self, f: |Option<&mut ~Flow>| -> R) -> R;
 
     /// Invokes a closure with the last child of this flow.
-    fn with_last_child<R>(self, f: |Option<&mut ~Flow:>| -> R) -> R;
+    fn with_last_child<R>(self, f: |Option<&mut ~Flow>| -> R) -> R;
 
     /// Removes the first child of this flow and destroys it.
     fn remove_first(self);
@@ -385,7 +385,7 @@ pub struct FlowData {
     restyle_damage: RestyleDamage,
 
     /// The children of this flow.
-    children: DList<~Flow:>,
+    children: DList<~Flow>,
 
     /* TODO (Issue #87): debug only */
     id: int,
@@ -454,7 +454,7 @@ impl FlowData {
         }
     }
 
-    pub fn child_iter<'a>(&'a mut self) -> MutDListIterator<'a,~Flow:> {
+    pub fn child_iter<'a>(&'a mut self) -> MutDListIterator<'a,~Flow> {
         self.children.mut_iter()
     }
 }
@@ -548,17 +548,17 @@ impl<'a> MutableFlowUtils for &'a mut Flow {
     }
 
     /// Adds a new flow as a child of this flow.
-    fn add_new_child(self, new_child: ~Flow:) {
+    fn add_new_child(self, new_child: ~Flow) {
         mut_base(self).children.push_back(new_child)
     }
 
     /// Invokes a closure with the first child of this flow.
-    fn with_first_child<R>(self, f: |Option<&mut ~Flow:>| -> R) -> R {
+    fn with_first_child<R>(self, f: |Option<&mut ~Flow>| -> R) -> R {
         f(mut_base(self).children.front_mut())
     }
 
     /// Invokes a closure with the last child of this flow.
-    fn with_last_child<R>(self, f: |Option<&mut ~Flow:>| -> R) -> R {
+    fn with_last_child<R>(self, f: |Option<&mut ~Flow>| -> R) -> R {
         f(mut_base(self).children.back_mut())
     }
 

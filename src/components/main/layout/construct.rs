@@ -48,7 +48,7 @@ pub enum ConstructionResult {
 
     /// This node contributed a flow at the proper position in the tree. Nothing more needs to be
     /// done for this node.
-    FlowConstructionResult(~Flow:),
+    FlowConstructionResult(~Flow),
 
     /// This node contributed some object or objects that will be needed to construct a proper flow
     /// later up the tree, but these objects have not yet found their home.
@@ -103,7 +103,7 @@ struct InlineBlockSplit {
     predecessor_boxes: ~[Box],
 
     /// The flow that caused this {ib} split.
-    flow: ~Flow:,
+    flow: ~Flow,
 }
 
 /// Methods on optional vectors.
@@ -232,10 +232,10 @@ impl<'fc> FlowConstructor<'fc> {
     /// `#[inline(always)]` because this is performance critical and LLVM will not inline it
     /// otherwise.
     #[inline(always)]
-    fn flush_inline_boxes_to_flow(&mut self, boxes: ~[Box], flow: &mut ~Flow:, node: LayoutNode) {
+    fn flush_inline_boxes_to_flow(&mut self, boxes: ~[Box], flow: &mut ~Flow, node: LayoutNode) {
         if boxes.len() > 0 {
             let inline_base = FlowData::new(self.next_flow_id(), node);
-            let mut inline_flow = ~InlineFlow::from_boxes(inline_base, boxes) as ~Flow:;
+            let mut inline_flow = ~InlineFlow::from_boxes(inline_base, boxes) as ~Flow;
             TextRunScanner::new().scan_for_runs(self.layout_context, inline_flow);
             flow.add_new_child(inline_flow)
         }
@@ -245,7 +245,7 @@ impl<'fc> FlowConstructor<'fc> {
     /// the given flow.
     fn flush_inline_boxes_to_flow_if_necessary(&mut self,
                                                opt_boxes: &mut Option<~[Box]>,
-                                               flow: &mut ~Flow:,
+                                               flow: &mut ~Flow,
                                                node: LayoutNode) {
         let opt_boxes = util::replace(opt_boxes, None);
         if opt_boxes.len() > 0 {
@@ -257,7 +257,7 @@ impl<'fc> FlowConstructor<'fc> {
     /// other `BlockFlow`s or `InlineFlow`s will be populated underneath this node, depending on
     /// whether {ib} splits needed to happen.
     fn build_children_of_block_flow(&mut self,
-                                    flow: &mut ~Flow:,
+                                    flow: &mut ~Flow,
                                     node: LayoutNode) {
         // Gather up boxes for the inline flows we might need to create.
         let mut opt_boxes_for_inline_flow = None;
@@ -343,10 +343,10 @@ impl<'fc> FlowConstructor<'fc> {
     /// Builds a flow for a node with `display: block`. This yields a `BlockFlow` with possibly
     /// other `BlockFlow`s or `InlineFlow`s underneath it, depending on whether {ib} splits needed
     /// to happen.
-    fn build_flow_for_block(&mut self, node: LayoutNode) -> ~Flow: {
+    fn build_flow_for_block(&mut self, node: LayoutNode) -> ~Flow {
         let base = FlowData::new(self.next_flow_id(), node);
         let box_ = self.build_box_for_node(node);
-        let mut flow = ~BlockFlow::from_box(base, box_) as ~Flow:;
+        let mut flow = ~BlockFlow::from_box(base, box_) as ~Flow;
         self.build_children_of_block_flow(&mut flow, node);
         flow
     }
@@ -354,10 +354,10 @@ impl<'fc> FlowConstructor<'fc> {
     /// Builds the flow for a node with `float: {left|right}`. This yields a float `BlockFlow` with
     /// a `BlockFlow` underneath it.
     fn build_flow_for_floated_block(&mut self, node: LayoutNode, float_type: FloatType)
-                                    -> ~Flow: {
+                                    -> ~Flow {
         let base = FlowData::new(self.next_flow_id(), node);
         let box_ = self.build_box_for_node(node);
-        let mut flow = ~BlockFlow::float_from_box(base, float_type, box_) as ~Flow:;
+        let mut flow = ~BlockFlow::float_from_box(base, float_type, box_) as ~Flow;
         self.build_children_of_block_flow(&mut flow, node);
         flow
     }
