@@ -34,7 +34,7 @@ use js::JSVAL_NULL;
 use js::global::debug_fns;
 use js::glue::RUST_JSVAL_TO_OBJECT;
 use js::jsapi::{JSContext, JSObject};
-use js::jsapi::{JS_CallFunctionValue, JS_GetContextPrivate};
+use js::jsapi::{JS_CallFunctionValue, JS_GetContextPrivate, JS_GC, JS_GetRuntime};
 use js::rust::{Compartment, Cx};
 use js;
 use servo_msg::compositor_msg::{FinishedLoading, Loading, PerformingLayout, ScriptListener};
@@ -362,12 +362,13 @@ impl Page {
 
     /// Sends the given layout data back to the layout task to be destroyed.
     pub unsafe fn reap_dead_layout_data(&self, layout_data: LayoutDataRef) {
+        println!("sending reap message");
         self.layout_chan.send(ReapLayoutDataMsg(layout_data))
     }
 }
 
 /// Information for one frame in the browsing context.
-pub struct Frame {
+pub struct Frame {`
     /// The document for this frame.
     document: AbstractDocument,
     /// The window object for this frame.
@@ -920,22 +921,16 @@ fn shut_down_layout(page: @mut Page) {
     response_port.recv();
 
     // Destroy all nodes.
-    //
-    // If there was a leak, the layout task will soon crash safely when it detects that local data
-    // is missing from its heap.
-    //
-    // FIXME(pcwalton): *But*, for now, because we use `@mut` boxes to hold onto Nodes, if this
-    // didn't destroy all the nodes there will be an *exploitable* security vulnerability as the
-    // nodes try to access the destroyed JS context. We need to change this so that the only actor
-    // who can judge a JS object dead (and thus run its drop glue) is the JS engine itself; thus it
-    // will be impossible (absent a serious flaw in the JS engine) for the JS context to be dead
-    // before nodes are.
-    unsafe {
-        let document_node = AbstractNode::from_document(page.frame.as_ref().unwrap().document);
-        for node in document_node.traverse_preorder() {
-            node.mut_node().reap_layout_data()
+    println!("reaping layout data");
+    match page.js_info {
+        None => {}
+        Some(ref js_info) => {
+            unsafe { JS_GC(JS_GetRuntime(js_info.js_context.ptr)); }
         }
     }
+    page.js_info = None;
+    page.frame = None;
+    println!("layout data reaped");
 
     // Destroy the layout task. If there were node leaks, layout will now crash safely.
     page.layout_chan.send(layout_interface::ExitNowMsg);

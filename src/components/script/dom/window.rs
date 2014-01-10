@@ -1,4 +1,4 @@
-/* This Source Code Form is subject to the terms of the Mozilla Public
+v/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
@@ -81,6 +81,7 @@ impl Window {
 #[unsafe_destructor]
 impl Drop for Window {
     fn drop(&mut self) {
+        println!("dropping Window");
         self.timer_chan.send(TimerMessage_Close);
         for handle in self.active_timers.iter() {
             handle.cancel();

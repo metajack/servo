@@ -102,6 +102,7 @@ bitfield!(NodeFlags, is_in_doc, set_is_in_doc, 0x01)
 #[unsafe_destructor]
 impl Drop for Node {
     fn drop(&mut self) {
+        println!("dropping a node {:?}", self);
         unsafe {
             let this: &mut Node = cast::transmute(self);
             this.reap_layout_data()
@@ -770,7 +771,9 @@ impl Node {
 
     /// Sends layout data, if any, back to the script task to be destroyed.
     pub unsafe fn reap_layout_data(&mut self) {
+        println!("node::reap_layout_data()");
         if self.layout_data.is_present() {
+            println!("something to reap!");
             let layout_data = util::replace(&mut self.layout_data, LayoutDataRef::init());
             let js_window = utils::global_object_for_dom_object(self);
             (*js_window).data.page.reap_dead_layout_data(layout_data)

@@ -15,6 +15,13 @@ pub struct HTMLElement {
     element: Element
 }
 
+#[unsafe_destructor]
+impl Drop for HTMLElement {
+    fn drop(&mut self) {
+        println!("dropping HTMLElement");
+    }
+}
+
 impl HTMLElement {
     pub fn new_inherited(type_id: ElementTypeId, tag_name: ~str, document: AbstractDocument) -> HTMLElement {
         HTMLElement {

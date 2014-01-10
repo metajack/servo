@@ -13,6 +13,13 @@ pub struct HTMLTitleElement {
     htmlelement: HTMLElement,
 }
 
+#[unsafe_destructor]
+impl Drop for HTMLTitleElement {
+    fn drop(&mut self) {
+        println!("dropping HTMLTitleElement");
+    }
+}
+
 impl HTMLTitleElement {
     pub fn new_inherited(localName: ~str, document: AbstractDocument) -> HTMLTitleElement {
         HTMLTitleElement {

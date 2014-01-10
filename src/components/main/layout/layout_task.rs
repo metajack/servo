@@ -335,6 +335,7 @@ impl LayoutTask {
     /// Shuts down the layout task now. If there are any DOM nodes left, layout will now (safely)
     /// crash.
     fn exit_now(&mut self) {
+        println!("layout_task::exit_now()");
         let (response_port, response_chan) = Chan::new();
         self.render_chan.send(render_task::ExitMsg(response_chan));
         response_port.recv()
@@ -659,6 +660,7 @@ impl LayoutTask {
     /// Handles a message to destroy layout data. Layout data must be destroyed on *this* task
     /// because it contains local managed pointers.
     unsafe fn handle_reap_layout_data(&self, layout_data: LayoutDataRef) {
+        println!("layout_task: reaping layout data");
         let mut layout_data_ref = layout_data.borrow_mut();
         let ptr: &mut Option<~LayoutData> = cast::transmute(layout_data_ref.get());
         *ptr = None
