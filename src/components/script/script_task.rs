@@ -368,7 +368,7 @@ impl Page {
 }
 
 /// Information for one frame in the browsing context.
-pub struct Frame {`
+pub struct Frame {
     /// The document for this frame.
     document: AbstractDocument,
     /// The window object for this frame.
@@ -928,8 +928,8 @@ fn shut_down_layout(page: @mut Page) {
             unsafe { JS_GC(JS_GetRuntime(js_info.js_context.ptr)); }
         }
     }
-    page.js_info = None;
     page.frame = None;
+    page.js_info = None;
     println!("layout data reaped");
 
     // Destroy the layout task. If there were node leaks, layout will now crash safely.
