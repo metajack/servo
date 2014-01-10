@@ -142,6 +142,20 @@ pub struct PageTreeIterator<'a> {
     priv stack: ~[&'a mut PageTree],
 }
 
+#[unsafe_destructor]
+impl Drop for PageTree {
+    fn drop(&mut self) {
+        println!("dropping PageTree");
+    }
+}
+
+#[unsafe_destructor]
+impl Drop for Page {
+    fn drop(&mut self) {
+        println!("dropping Page");
+    }
+}
+
 impl PageTree {
     fn new(id: PipelineId, layout_chan: LayoutChan, window_size: Size2D<uint>) -> PageTree {
         PageTree {
@@ -374,6 +388,14 @@ pub struct Frame {
     /// The window object for this frame.
     window: @mut Window,
 }
+
+#[unsafe_destructor]
+impl Drop for JSPageInfo {
+    fn drop(&mut self) {
+        println!("dropping JSPageInfo");
+    }
+}
+
 
 /// Encapsulation of the javascript information associated with each frame.
 pub struct JSPageInfo {
@@ -694,6 +716,10 @@ impl ScriptTask {
         //
         // Note: We can parse the next document in parallel with any previous documents.
         let document = HTMLDocument::new(window);
+        unsafe {
+            println!("created HTMLDocument with refcount = {}",
+                     (*document.document).ref_count);
+        }
 
         let html_parsing_result = hubbub_html_parser::parse_html(cx.ptr,
                                                                  document,

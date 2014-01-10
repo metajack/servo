@@ -207,7 +207,6 @@ pub fn unwrap_value<T>(val: *JSVal, proto_id: PrototypeList::id::ID, proto_depth
 
 pub unsafe fn squirrel_away<T>(x: @mut T) -> *Box<T> {
     let y: *Box<T> = cast::transmute(x);
-    cast::forget(x);
     y
 }
 

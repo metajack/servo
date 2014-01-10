@@ -100,9 +100,9 @@ impl Document {
         let document = reflect_dom_object(document, window, wrap_fn);
         assert!(document.reflector().get_jsobject().is_not_null());
 
-        // This surrenders memory management of the document!
+        // JS object now owns the Document, so transmute_copy is needed
         let abstract = AbstractDocument {
-            document: unsafe { cast::transmute(document) }
+            document: unsafe { cast::transmute_copy(document) }
         };
         abstract.mut_document().node.set_owner_doc(abstract);
         abstract
