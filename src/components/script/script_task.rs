@@ -15,7 +15,7 @@ use dom::eventtarget::AbstractEventTarget;
 use dom::htmldocument::HTMLDocument;
 use dom::namespace::Null;
 use dom::node::{AbstractNode, LayoutDataRef};
-use dom::window::{TimerData, Window};
+use dom::window::{TimerData, TimerHandle, Window};
 use html::hubbub_html_parser::HtmlParserResult;
 use html::hubbub_html_parser::{HtmlDiscoveredStyle, HtmlDiscoveredIFrame, HtmlDiscoveredScript};
 use html::hubbub_html_parser;
@@ -566,7 +566,7 @@ impl ScriptTask {
         let page = self.page_tree.find(id).expect("ScriptTask: received fire timer msg for a
             pipeline ID not associated with this script task. This is a bug.").page;
         let window = page.frame.expect("ScriptTask: Expect a timeout to have a document").window;
-        if !window.active_timers.contains(&timer_data.handle) {
+        if !window.active_timers.contains(&TimerHandle { handle: timer_data.handle, cancel_chan: None }) {
             return;
         }
         unsafe {
