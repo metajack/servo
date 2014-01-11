@@ -34,7 +34,7 @@ use js::JSVAL_NULL;
 use js::global::debug_fns;
 use js::glue::RUST_JSVAL_TO_OBJECT;
 use js::jsapi::{JSContext, JSObject};
-use js::jsapi::{JS_CallFunctionValue, JS_GetContextPrivate, JS_GC, JS_GetRuntime};
+use js::jsapi::{JS_CallFunctionValue, JS_GetContextPrivate};
 use js::rust::{Compartment, Cx};
 use js;
 use servo_msg::compositor_msg::{FinishedLoading, Loading, PerformingLayout, ScriptListener};
@@ -948,12 +948,6 @@ fn shut_down_layout(page: @mut Page) {
 
     // Destroy all nodes.
     println!("reaping layout data");
-    match page.js_info {
-        None => {}
-        Some(ref js_info) => {
-            unsafe { JS_GC(JS_GetRuntime(js_info.js_context.ptr)); }
-        }
-    }
     page.frame = None;
     page.js_info = None;
     println!("layout data reaped");
