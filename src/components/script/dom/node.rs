@@ -20,15 +20,14 @@ use dom::text::Text;
 
 use js::jsapi::{JSObject, JSContext};
 
-use script_task;
+use layout_interface::{LayoutChan, ReapLayoutDataMsg};
 
-use std::cast::transmute;
 use std::cast;
-use std::ptr;
-use std::unstable::raw::Box;
-use std::util;
-use std::iter::Filter;
+use std::cast::transmute;
 use std::cell::{RefCell, Ref, RefMut};
+use std::iter::Filter;
+use std::util;
+use std::unstable::raw::Box;
 
 //
 // The basic Node structure
@@ -113,30 +112,43 @@ impl Drop for Node {
 }
 
 /// Encapsulates the abstract layout data.
+pub struct LayoutData {
+    priv chan: Option<LayoutChan>,
+    priv data: *(),
+}
+
 pub struct LayoutDataRef {
-    priv data: RefCell<*()>,
+    data_cell: RefCell<Option<LayoutData>>,
 }
 
 impl LayoutDataRef {
-    #[inline]
-    pub fn init() -> LayoutDataRef {
+    pub fn new() -> LayoutDataRef {
         LayoutDataRef {
-            data: RefCell::new(ptr::null()),
+            data_cell: RefCell::new(None),
         }
     }
 
-    /// Creates a new piece of layout data from a value.
-    #[inline]
     pub unsafe fn from_data<T>(data: ~T) -> LayoutDataRef {
         LayoutDataRef {
-            data: RefCell::new(cast::transmute(data)),
+            data_cell: RefCell::new(Some(cast::transmute(data))),
         }
     }
 
-    /// Returns true if this layout data is present or false otherwise.
+    /// Returns true if there is layout data present.
     #[inline]
     pub fn is_present(&self) -> bool {
-        self.data.get().is_not_null()
+        let data_ref = self.data_cell.borrow();
+        data_ref.get().is_some()
+    }
+
+    /// Take the chan out of the layout data if it is present.
+    pub fn take_chan(&self) -> Option<LayoutChan> {
+        let mut data_ref = self.data_cell.borrow_mut();
+        let layout_data = data_ref.get();
+        match *layout_data {
+            None => None,
+            Some(..) => Some(layout_data.get_mut_ref().chan.take_unwrap()),
+        }
     }
 
     /// Borrows the layout data immutably, *asserting that there are no mutators*. Bad things will
@@ -152,8 +164,8 @@ impl LayoutDataRef {
 
     /// Borrows the layout data immutably. This function is *not* thread-safe.
     #[inline]
-    pub fn borrow<'a>(&'a self) -> Ref<'a,*()> {
-        self.data.borrow()
+    pub fn borrow<'a>(&'a self) -> Ref<'a,Option<LayoutData>> {
+        self.data_cell.borrow()
     }
 
     /// Borrows the layout data mutably. This function is *not* thread-safe.
@@ -162,8 +174,8 @@ impl LayoutDataRef {
     /// prevent CSS selector matching from mutably accessing nodes it's not supposed to and racing
     /// on it. This has already resulted in one bug!
     #[inline]
-    pub fn borrow_mut<'a>(&'a self) -> RefMut<'a,*()> {
-        self.data.borrow_mut()
+    pub fn borrow_mut<'a>(&'a self) -> RefMut<'a,Option<LayoutData>> {
+        self.data_cell.borrow_mut()
     }
 }
 
@@ -767,17 +779,21 @@ impl Node {
 
             flags: NodeFlags::new(type_id),
 
-            layout_data: LayoutDataRef::init(),
+            layout_data: LayoutDataRef::new(),
         }
     }
 
     /// Sends layout data, if any, back to the script task to be destroyed.
     pub unsafe fn reap_layout_data(&mut self) {
-        println!("node::reap_layout_data()");
+        println!("reaping layout data");
+        
         if self.layout_data.is_present() {
-            println!("something to reap!");
-            let layout_data = util::replace(&mut self.layout_data, LayoutDataRef::init());
-            script_task::reap_dead_layout_data(layout_data);
+            let layout_data = util::replace(&mut self.layout_data, LayoutDataRef::new()).unwrap();
+            let layout_chan = layout_data.take_chan();
+            match layout_chan {
+                None => {}
+                Some(chan) => chan.send(ReapLayoutDataMsg(layout_data)),
+            }
         }
     }
 

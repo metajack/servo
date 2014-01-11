@@ -14,7 +14,7 @@ use dom::event::Event;
 use dom::eventtarget::AbstractEventTarget;
 use dom::htmldocument::HTMLDocument;
 use dom::namespace::Null;
-use dom::node::{AbstractNode, LayoutDataRef};
+use dom::node::AbstractNode;
 use dom::window::{TimerData, TimerHandle, Window};
 use html::hubbub_html_parser::HtmlParserResult;
 use html::hubbub_html_parser::{HtmlDiscoveredStyle, HtmlDiscoveredIFrame, HtmlDiscoveredScript};
@@ -22,7 +22,7 @@ use html::hubbub_html_parser;
 use layout_interface::{AddStylesheetMsg, DocumentDamage};
 use layout_interface::{ContentBoxQuery, ContentBoxResponse};
 use layout_interface::{DocumentDamageLevel, HitTestQuery, HitTestResponse, LayoutQuery};
-use layout_interface::{LayoutChan, MatchSelectorsDocumentDamage, QueryMsg, ReapLayoutDataMsg};
+use layout_interface::{LayoutChan, MatchSelectorsDocumentDamage, QueryMsg};
 use layout_interface::{Reflow, ReflowDocumentDamage, ReflowForDisplay, ReflowGoal, ReflowMsg};
 use layout_interface::ContentChangedDocumentDamage;
 use layout_interface;
@@ -47,12 +47,9 @@ use servo_net::resource_task::ResourceTask;
 use servo_util::geometry::to_frac_px;
 use servo_util::url::make_url;
 use std::comm::{Port, SharedChan};
-use std::local_data;
 use std::ptr;
 use std::str::eq_slice;
 use std::util::replace;
-
-static current_layout_tls_key: local_data::Key<LayoutChan> = &local_data::Key;
 
 /// Messages used to control the script task.
 pub enum ScriptMsg {
@@ -945,25 +942,14 @@ fn shut_down_layout(page: @mut Page) {
 
     // Destroy all nodes.
 
-    // Node finalizers need to reap layout data, and will
-    // need to talk to layout to do so. We stuff the layout_chan into the JS
-    // runtimee which they can access.
+    // Node finalizers need to reap layout data, and will need to talk to
+    // layout to do so. We stuff the layout_chan TLS which they can access.
 
     println!("reaping layout data");
-    local_data::set(current_layout_tls_key, page.layout_chan.clone());
     page.frame = None;
     page.js_info = None;
-    local_data::pop(current_layout_tls_key);
     println!("layout data reaped");
 
     // Destroy the layout task. If there were node leaks, layout will now crash safely.
     page.layout_chan.send(layout_interface::ExitNowMsg);
-}
-
-/// Sends the given layout data back to the layout task to be destroyed.
-pub unsafe fn reap_dead_layout_data(layout_data: LayoutDataRef) {
-    let mut layout_data = Some(layout_data);
-    local_data::get(current_layout_tls_key, |layout_chan| {
-        layout_chan.get_ref().send(ReapLayoutDataMsg(layout_data.take_unwrap()));
-    });
 }

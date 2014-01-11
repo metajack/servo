@@ -8,6 +8,7 @@ use layout::wrapper::LayoutNode;
 
 use extra::arc::Arc;
 use script::dom::node::AbstractNode;
+use script::layout_interface::LayoutChan;
 use servo_util::range::Range;
 use std::cast;
 use std::cell::{Ref, RefMut};
@@ -125,7 +126,7 @@ impl ElementMapping {
 }
 
 /// Data that layout associates with a node.
-pub struct LayoutData {
+pub struct PrivateLayoutData {
     /// The results of CSS matching for this node.
     before_applicable_declarations: ~[Arc<~[PropertyDeclaration]>],
 
@@ -148,10 +149,10 @@ pub struct LayoutData {
     flow_construction_result: ConstructionResult,
 }
 
-impl LayoutData {
+impl PrivateLayoutData {
     /// Creates new layout data.
-    pub fn new() -> LayoutData {
-        LayoutData {
+    pub fn new() -> PrivateLayoutData {
+        PrivateLayoutData {
             applicable_declarations: ~[],
             before_applicable_declarations: ~[],
             after_applicable_declarations: ~[],
@@ -164,6 +165,11 @@ impl LayoutData {
     }
 }
 
+pub struct LayoutDataWrapper {
+    chan: Option<LayoutChan>,
+    data: ~PrivateLayoutData,
+}
+
 /// A trait that allows access to the layout data of a DOM node.
 pub trait LayoutDataAccess {
     /// Borrows the layout data without checks.
@@ -171,21 +177,21 @@ pub trait LayoutDataAccess {
     /// FIXME(pcwalton): Make safe.
     // unsafe fn borrow_layout_data_unchecked<'a>(&'a self) -> &'a Option<~LayoutData>;
     /// Borrows the layout data immutably. Fails on a conflicting borrow.
-    fn borrow_layout_data<'a>(&'a self) -> Ref<'a,Option<~LayoutData>>;
+    fn borrow_layout_data<'a>(&'a self) -> Ref<'a,Option<LayoutDataWrapper>>;
     /// Borrows the layout data mutably. Fails on a conflicting borrow.
-    fn mutate_layout_data<'a>(&'a self) -> RefMut<'a,Option<~LayoutData>>;
+    fn mutate_layout_data<'a>(&'a self) -> RefMut<'a,Option<LayoutDataWrapper>>;
 }
 
 impl<'ln> LayoutDataAccess for LayoutNode<'ln> {
     #[inline(always)]
-    fn borrow_layout_data<'a>(&'a self) -> Ref<'a,Option<~LayoutData>> {
+    fn borrow_layout_data<'a>(&'a self) -> Ref<'a,Option<LayoutDataWrapper>> {
         unsafe {
             cast::transmute(self.get().layout_data.borrow())
         }
     }
 
     #[inline(always)]
-    fn mutate_layout_data<'a>(&'a self) -> RefMut<'a,Option<~LayoutData>> {
+    fn mutate_layout_data<'a>(&'a self) -> RefMut<'a,Option<LayoutDataWrapper>> {
         unsafe {
             cast::transmute(self.get().layout_data.borrow_mut())
         }

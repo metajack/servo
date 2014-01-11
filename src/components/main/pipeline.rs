@@ -68,6 +68,7 @@ impl Pipeline {
 
         LayoutTask::create(id,
                            layout_port,
+                           layout_chan.clone(),
                            constellation_chan,
                            script_pipeline.script_chan.clone(),
                            render_chan.clone(),
@@ -138,6 +139,7 @@ impl Pipeline {
 
         LayoutTask::create(id,
                            layout_port,
+                           layout_chan.clone(),
                            constellation_chan,
                            script_chan.clone(),
                            render_chan.clone(),

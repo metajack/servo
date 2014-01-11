@@ -16,7 +16,7 @@ use layout::flow::{Flow, ImmutableFlowUtils, MutableFlowUtils, PreorderFlowTrave
 use layout::flow::{PostorderFlowTraversal};
 use layout::flow;
 use layout::incremental::{RestyleDamage};
-use layout::util::{LayoutData, LayoutDataAccess, OpaqueNode};
+use layout::util::{LayoutDataAccess, OpaqueNode, LayoutDataWrapper};
 use layout::wrapper::LayoutNode;
 
 use extra::arc::{Arc, RWArc, MutexArc};
@@ -34,7 +34,7 @@ use script::dom::element::{HTMLBodyElementTypeId, HTMLHtmlElementTypeId};
 use script::layout_interface::{AddStylesheetMsg, ContentBoxQuery};
 use script::layout_interface::{ContentBoxesQuery, ContentBoxesResponse, ExitNowMsg, LayoutQuery};
 use script::layout_interface::{HitTestQuery, ContentBoxResponse, HitTestResponse};
-use script::layout_interface::{ContentChangedDocumentDamage, Msg, PrepareToExitMsg};
+use script::layout_interface::{ContentChangedDocumentDamage, LayoutChan, Msg, PrepareToExitMsg};
 use script::layout_interface::{QueryMsg, ReapLayoutDataMsg, Reflow, ReflowDocumentDamage};
 use script::layout_interface::{ReflowForDisplay, ReflowMsg};
 use script::script_task::{ReflowCompleteMsg, ScriptChan, SendEventMsg};
@@ -58,6 +58,9 @@ pub struct LayoutTask {
 
     /// The port on which we receive messages.
     port: Port<Msg>,
+
+    //// The channel to send messages to ourself.
+    chan: LayoutChan,
 
     /// The channel on which messages can be sent to the constellation.
     constellation_chan: ConstellationChan,
@@ -199,6 +202,7 @@ impl LayoutTask {
     /// Spawns a new layout task.
     pub fn create(id: PipelineId,
                   port: Port<Msg>,
+                  chan: LayoutChan,
                   constellation_chan: ConstellationChan,
                   script_chan: ScriptChan,
                   render_chan: RenderChan<OpaqueNode>,
@@ -210,6 +214,7 @@ impl LayoutTask {
             { // Ensures layout task is destroyed before we send shutdown message
                 let mut layout = LayoutTask::new(id,
                                                  port,
+                                                 chan,
                                                  constellation_chan,
                                                  script_chan,
                                                  render_chan,
@@ -225,6 +230,7 @@ impl LayoutTask {
     /// Creates a new `LayoutTask` structure.
     fn new(id: PipelineId,
            port: Port<Msg>,
+           chan: LayoutChan,
            constellation_chan: ConstellationChan,
            script_chan: ScriptChan,
            render_chan: RenderChan<OpaqueNode>, 
@@ -236,6 +242,7 @@ impl LayoutTask {
         LayoutTask {
             id: id,
             port: port,
+            chan: chan,
             constellation_chan: constellation_chan,
             script_chan: script_chan,
             render_chan: render_chan,
@@ -361,7 +368,7 @@ impl LayoutTask {
         let mut layout_data_ref = node.mutate_layout_data();
         let result = match *layout_data_ref.get() {
             Some(ref mut layout_data) => {
-                util::replace(&mut layout_data.flow_construction_result, NoConstructionResult)
+                util::replace(&mut layout_data.data.flow_construction_result, NoConstructionResult)
             }
             None => fail!("no layout data for root node"),
         };
@@ -434,7 +441,7 @@ impl LayoutTask {
         //
         // FIXME: This is inefficient. We don't need an entire traversal to do this!
         profile(time::LayoutAuxInitCategory, self.profiler_chan.clone(), || {
-            node.initialize_style_for_subtree();
+            node.initialize_style_for_subtree(self.chan.clone());
         });
 
         // Perform CSS selector matching if necessary.
@@ -662,7 +669,8 @@ impl LayoutTask {
     unsafe fn handle_reap_layout_data(&self, layout_data: LayoutDataRef) {
         println!("layout_task: reaping layout data");
         let mut layout_data_ref = layout_data.borrow_mut();
-        let ptr: &mut Option<~LayoutData> = cast::transmute(layout_data_ref.get());
-        *ptr = None
+        let _: Option<LayoutDataWrapper> = cast::transmute(
+            util::replace(layout_data_ref.get(), None));
     }
 }
+

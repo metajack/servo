@@ -546,7 +546,7 @@ impl<'ln> NodeUtils for LayoutNode<'ln> {
     fn set_flow_construction_result(self, result: ConstructionResult) {
         let mut layout_data_ref = self.mutate_layout_data();
         match *layout_data_ref.get() {
-            Some(ref mut layout_data) => layout_data.flow_construction_result = result,
+            Some(ref mut layout_data) => layout_data.data.flow_construction_result = result,
             None => fail!("no layout data"),
         }
     }
@@ -556,7 +556,7 @@ impl<'ln> NodeUtils for LayoutNode<'ln> {
         let mut layout_data_ref = self.mutate_layout_data();
         match *layout_data_ref.get() {
             Some(ref mut layout_data) => {
-                util::replace(&mut layout_data.flow_construction_result, NoConstructionResult)
+                util::replace(&mut layout_data.data.flow_construction_result, NoConstructionResult)
             }
             None => fail!("no layout data"),
         }

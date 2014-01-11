@@ -28,14 +28,14 @@ impl<'ln> NodeUtil for LayoutNode<'ln> {
     fn get_css_select_results<'a>(&'a self) -> &'a Arc<ComputedValues> {
         unsafe {
             let layout_data_ref = self.borrow_layout_data();
-            cast::transmute_region(layout_data_ref.get().as_ref().unwrap().style.as_ref().unwrap())
+            cast::transmute_region(layout_data_ref.get().as_ref().unwrap().data.style.as_ref().unwrap())
         }
     }
 
     /// Does this node have a computed style yet?
     fn have_css_select_results(self) -> bool {
         let layout_data_ref = self.borrow_layout_data();
-        layout_data_ref.get().get_ref().style.is_some()
+        layout_data_ref.get().get_ref().data.style.is_some()
     }
 
     /// Get the description of how to account for recent style changes.
@@ -53,6 +53,7 @@ impl<'ln> NodeUtil for LayoutNode<'ln> {
         layout_data_ref
             .get()
             .get_ref()
+            .data
             .restyle_damage
             .map(|x| RestyleDamage::from_int(x))
             .unwrap_or(default)
@@ -62,7 +63,7 @@ impl<'ln> NodeUtil for LayoutNode<'ln> {
     fn set_restyle_damage(self, damage: RestyleDamage) {
         let mut layout_data_ref = self.mutate_layout_data();
         match *layout_data_ref.get() {
-            Some(ref mut data) => data.restyle_damage = Some(damage.to_int()),
+            Some(ref mut layout_data) => layout_data.data.restyle_damage = Some(damage.to_int()),
             _ => fail!("no layout data for this node"),
         }
     }
