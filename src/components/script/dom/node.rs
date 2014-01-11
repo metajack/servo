@@ -19,6 +19,9 @@ use dom::nodelist::{NodeList};
 use dom::text::Text;
 
 use js::jsapi::{JSObject, JSContext};
+
+use script_task;
+
 use std::cast::transmute;
 use std::cast;
 use std::ptr;
@@ -774,8 +777,7 @@ impl Node {
         if self.layout_data.is_present() {
             println!("something to reap!");
             let layout_data = util::replace(&mut self.layout_data, LayoutDataRef::init());
-            let window = self.owner_doc().document().window;
-            window.page.reap_dead_layout_data(layout_data)
+            script_task::reap_dead_layout_data(layout_data);
         }
     }
 
