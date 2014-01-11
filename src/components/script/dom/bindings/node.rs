@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-use dom::bindings::utils::{Reflectable, Reflector, Traceable};
+use dom::bindings::utils::{Reflectable, Reflector, Traceable, trace_reflector};
 use dom::types::*;
 use dom::node::AbstractNode;
 
@@ -46,5 +46,7 @@ impl Traceable for Node {
         trace_node(tracer, self.last_child, "last child");
         trace_node(tracer, self.next_sibling, "next sibling");
         trace_node(tracer, self.prev_sibling, "prev sibling");
+        let owner_doc = self.owner_doc();
+        trace_reflector(tracer, "document", owner_doc.reflector());
     }
 }
