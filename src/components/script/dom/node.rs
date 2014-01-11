@@ -733,9 +733,9 @@ impl Node {
         assert!(node.reflector().get_jsobject().is_null());
         let node = reflect_dom_object(node, document.document().window, wrap_fn);
         assert!(node.reflector().get_jsobject().is_not_null());
-        // This surrenders memory management of the node!
+        // JS owns the node now, so transmute_copy to not increase the refcount
         AbstractNode {
-            obj: unsafe { transmute(node) },
+            obj: unsafe { cast::transmute_copy(&node) },
         }
     }
 

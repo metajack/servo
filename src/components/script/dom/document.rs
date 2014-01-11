@@ -102,7 +102,7 @@ impl Document {
 
         // JS object now owns the Document, so transmute_copy is needed
         let abstract = AbstractDocument {
-            document: unsafe { cast::transmute_copy(document) }
+            document: unsafe { cast::transmute_copy(&document) }
         };
         abstract.mut_document().node.set_owner_doc(abstract);
         abstract
