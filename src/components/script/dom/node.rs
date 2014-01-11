@@ -7,7 +7,6 @@
 use dom::bindings::utils::{Reflectable, Reflector, reflect_dom_object};
 use dom::bindings::utils::{DOMString, null_str_as_empty};
 use dom::bindings::utils::{ErrorResult, Fallible, NotFound, HierarchyRequest};
-use dom::bindings::utils;
 use dom::characterdata::CharacterData;
 use dom::document::{AbstractDocument, DocumentTypeId};
 use dom::documenttype::DocumentType;
@@ -775,8 +774,8 @@ impl Node {
         if self.layout_data.is_present() {
             println!("something to reap!");
             let layout_data = util::replace(&mut self.layout_data, LayoutDataRef::init());
-            let js_window = utils::global_object_for_dom_object(self);
-            (*js_window).data.page.reap_dead_layout_data(layout_data)
+            let window = self.owner_doc().document().window;
+            window.page.reap_dead_layout_data(layout_data)
         }
     }
 
