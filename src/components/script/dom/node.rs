@@ -103,7 +103,6 @@ bitfield!(NodeFlags, is_in_doc, set_is_in_doc, 0x01)
 #[unsafe_destructor]
 impl Drop for Node {
     fn drop(&mut self) {
-        println!("dropping a node {:?}", self);
         unsafe {
             let this: &mut Node = cast::transmute(self);
             this.reap_layout_data()

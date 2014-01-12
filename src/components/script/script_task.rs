@@ -586,6 +586,7 @@ impl ScriptTask {
         if !window.active_timers.contains(&TimerHandle { handle: timer_data.handle, cancel_chan: None }) {
             return;
         }
+        window.active_timers.remove(&TimerHandle { handle: timer_data.handle, cancel_chan: None });
         unsafe {
             let this_value = if timer_data.args.len() > 0 {
                 RUST_JSVAL_TO_OBJECT(timer_data.args[0])
