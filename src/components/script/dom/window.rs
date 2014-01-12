@@ -81,7 +81,6 @@ impl Window {
 #[unsafe_destructor]
 impl Drop for Window {
     fn drop(&mut self) {
-        println!("dropping Window");
         self.timer_chan.send(TimerMessage_Close);
         for handle in self.active_timers.iter() {
             handle.cancel();

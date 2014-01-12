@@ -142,20 +142,6 @@ pub struct PageTreeIterator<'a> {
     priv stack: ~[&'a mut PageTree],
 }
 
-#[unsafe_destructor]
-impl Drop for PageTree {
-    fn drop(&mut self) {
-        println!("dropping PageTree");
-    }
-}
-
-#[unsafe_destructor]
-impl Drop for Page {
-    fn drop(&mut self) {
-        println!("dropping Page");
-    }
-}
-
 impl PageTree {
     fn new(id: PipelineId, layout_chan: LayoutChan, window_size: Size2D<uint>) -> PageTree {
         PageTree {
@@ -382,14 +368,6 @@ pub struct Frame {
     /// The window object for this frame.
     window: @mut Window,
 }
-
-#[unsafe_destructor]
-impl Drop for JSPageInfo {
-    fn drop(&mut self) {
-        println!("dropping JSPageInfo");
-    }
-}
-
 
 /// Encapsulation of the javascript information associated with each frame.
 pub struct JSPageInfo {
@@ -711,11 +689,6 @@ impl ScriptTask {
         //
         // Note: We can parse the next document in parallel with any previous documents.
         let document = HTMLDocument::new(window);
-        unsafe {
-            println!("created HTMLDocument with refcount = {}",
-                     (*document.document).ref_count);
-        }
-
         let html_parsing_result = hubbub_html_parser::parse_html(cx.ptr,
                                                                  document,
                                                                  url.clone(),
@@ -945,11 +918,8 @@ fn shut_down_layout(page: @mut Page) {
 
     // Node finalizers need to reap layout data, and will need to talk to
     // layout to do so. We stuff the layout_chan TLS which they can access.
-
-    println!("reaping layout data");
     page.frame = None;
     page.js_info = None;
-    println!("layout data reaped");
 
     // Destroy the layout task. If there were node leaks, layout will now crash safely.
     page.layout_chan.send(layout_interface::ExitNowMsg);

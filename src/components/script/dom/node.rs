@@ -784,8 +784,6 @@ impl Node {
 
     /// Sends layout data, if any, back to the script task to be destroyed.
     pub unsafe fn reap_layout_data(&mut self) {
-        println!("reaping layout data");
-        
         if self.layout_data.is_present() {
             let layout_data = util::replace(&mut self.layout_data, LayoutDataRef::new());
             let layout_chan = layout_data.take_chan();

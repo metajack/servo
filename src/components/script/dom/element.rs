@@ -34,13 +34,6 @@ pub struct Element {
     attr_list: Option<@mut AttrList>
 }
 
-#[unsafe_destructor]
-impl Drop for Element {
-    fn drop(&mut self) {
-        println!("dropping Element");
-    }
-}
-
 impl Reflectable for Element {
     fn reflector<'a>(&'a self) -> &'a Reflector {
         self.node.reflector()
