@@ -737,7 +737,7 @@ impl Constellation {
         let mut already_seen = HashSet::new();
         for &@FrameTree { pipeline: pipeline, .. } in self.current_frame().iter() {
             debug!("constellation sending resize message to active frame");
-            pipeline.script_chan.send(ResizeMsg(pipeline.id, new_size));
+            pipeline.script_chan.try_send(ResizeMsg(pipeline.id, new_size));
             already_seen.insert(pipeline.id);
         }
         for frame_tree in self.navigation_context.previous.iter()
@@ -745,7 +745,7 @@ impl Constellation {
             let pipeline = &frame_tree.pipeline;
             if !already_seen.contains(&pipeline.id) {
                 debug!("constellation sending resize message to inactive frame");
-                pipeline.script_chan.send(ResizeInactiveMsg(pipeline.id, new_size));
+                pipeline.script_chan.try_send(ResizeInactiveMsg(pipeline.id, new_size));
                 already_seen.insert(pipeline.id);
             }
         }
