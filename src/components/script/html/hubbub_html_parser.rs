@@ -106,11 +106,11 @@ fn css_link_listener(to_parent: SharedChan<HtmlDiscoveryMessage>,
     let mut result_vec = ~[];
 
     loop {
-        match from_parent.recv() {
-            CSSTaskNewFile(provenance) => {
+        match from_parent.recv_opt() {
+            Some(CSSTaskNewFile(provenance)) => {
                 result_vec.push(spawn_css_parser(provenance, resource_task.clone()));
             }
-            CSSTaskExit => {
+            Some(CSSTaskExit) | None => {
                 break;
             }
         }
@@ -119,7 +119,7 @@ fn css_link_listener(to_parent: SharedChan<HtmlDiscoveryMessage>,
     // Send the sheets back in order
     // FIXME: Shouldn't wait until after we've recieved CSSTaskExit to start sending these
     for port in result_vec.iter() {
-        to_parent.send(HtmlDiscoveredStyle(port.recv()));
+        to_parent.try_send(HtmlDiscoveredStyle(port.recv()));
     }
 }
 
@@ -129,8 +129,8 @@ fn js_script_listener(to_parent: SharedChan<HtmlDiscoveryMessage>,
     let mut result_vec = ~[];
 
     loop {
-        match from_parent.recv() {
-            JSTaskNewFile(url) => {
+        match from_parent.recv_opt() {
+            Some(JSTaskNewFile(url)) => {
                 match load_whole_resource(&resource_task, url.clone()) {
                     Err(_) => {
                         error!("error loading script {:s}", url.to_str());
@@ -143,16 +143,16 @@ fn js_script_listener(to_parent: SharedChan<HtmlDiscoveryMessage>,
                     }
                 }
             }
-            JSTaskNewInlineScript(data, url) => {
+            Some(JSTaskNewInlineScript(data, url)) => {
                 result_vec.push(JSFile { data: data, url: url });
             }
-            JSTaskExit => {
+            Some(JSTaskExit) | None => {
                 break;
             }
         }
     }
 
-    to_parent.send(HtmlDiscoveredScript(result_vec));
+    to_parent.try_send(HtmlDiscoveredScript(result_vec));
 }
 
 // Silly macros to handle constructing      DOM nodes. This produces bad code and should be optimized
