@@ -13,9 +13,7 @@ before_script:
 - if [ "${TRAVIS_OS_NAME}" = "osx" ]; then ./travis.osx.before_script.sh; fi
 
 script:
-- mkdir -p build
-- cd build
-- ../mk/build.sh
+- ./mach build
 - if [ "${TRAVIS_OS_NAME}" = "linux" ]; then ../travis.linux.script.sh $AFTER_BUILD; fi
 - if [ "${TRAVIS_OS_NAME}" = "osx" ]; then ../travis.osx.script.sh $AFTER_BUILD; fi
 

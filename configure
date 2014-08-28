@@ -395,10 +395,6 @@ probe_need CFG_GIT         git
 probe_need CFG_PYTHON2     python2 python2.7 python
 export PYTHON=${CFG_PYTHON2}
 echo "exporting python = ${CFG_PYTHON2}"
-# Spidermonkey requires autoconf 2.13 exactly
-probe_need CFG_AUTOCONF213 autoconf213  \
-                           autoconf2.13 \
-                           autoconf-2.13
 
 step_msg "looking for build programs"
 case ${TARGET_OSTYPE} in
@@ -499,11 +495,6 @@ fi
 step_msg "running submodule autoconf scripts"
 
 msg "configuring src/mozjs"
-
-AUTOCONF213_M4_MACROS="$(dirname ${CFG_AUTOCONF213})/../share/$(basename ${CFG_AUTOCONF213})/"
-
-# Run the SpiderMonkey autoconf using autoconf 2.13
-(cd ${CFG_SRC_DIR}src/support/spidermonkey/mozjs/js/src && "${CFG_AUTOCONF213}" -l "${AUTOCONF213_M4_MACROS}") || exit $?
 
 if [ $CFG_OSTYPE = "linux-androideabi" ]
 then
@@ -702,7 +693,7 @@ do
             CONFIGURE_ARGS="${CONFIGURE_ARGS} --with-expat-lib=${CFG_BUILD_DIR}src/platform/android/libexpat/.libs"
             CONFIGURE_ARGS="${CONFIGURE_ARGS} --with-sysroot=${CFG_ANDROID_CROSS_PATH}/sysroot"
             CONFIGURE_ARGS="${CONFIGURE_ARGS} --with-cache-dir=${CFG_ANDROID_RESOURCE_PATH}/.fccache"
-            CONFIGURE_ARGS="${CONFIGURE_ARGS} --with-confdir=${CFG_ANDROID_RESOURCE_PATH}/.fcconfig"
+            CONFIGURE_ARGS="${CONFIGURE_ARGS} --with-configdir=${CFG_ANDROID_RESOURCE_PATH}/.fcconfig"
             CONFIGURE_ARGS="${CONFIGURE_ARGS} --with-default-fonts=${CFG_ANDROID_FONT_PATH}"
             # --enable-debug isn't supported by fontconfig
             ENABLE_DEBUG=
@@ -748,6 +739,9 @@ do
             ;;
         support/url/rust-url)
             CONFIGURE_SCRIPT="${CFG_SRC_DIR}src/support/url/configure"
+            ;;
+        support/http/rust-http)
+            CONFIGURE_SCRIPT="${CFG_SRC_DIR}src/support/http/rust-http/configure.servo"
             ;;
         *)
             ;;
