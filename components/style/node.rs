@@ -24,7 +24,7 @@ pub trait TNode<E:TElement> : Clone {
 }
 
 pub trait TElement {
-    fn get_attr(&self, namespace: &Namespace, attr: &str) -> Option<&'static str>;
+    fn get_attr(&self, namespace: &Namespace, attr: &Atom) -> Option<&'static str>;
     fn get_link(&self) -> Option<&'static str>;
     fn get_local_name<'a>(&'a self) -> &'a Atom;
     fn get_namespace<'a>(&'a self) -> &'a Namespace;
@@ -32,5 +32,5 @@ pub trait TElement {
     fn get_id(&self) -> Option<Atom>;
     fn get_disabled_state(&self) -> bool;
     fn get_enabled_state(&self) -> bool;
-    fn has_class(&self, name: &str) -> bool;
+    fn has_class(&self, name: &Atom) -> bool;
 }

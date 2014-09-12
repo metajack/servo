@@ -193,12 +193,14 @@ pub trait AttrHelpersForLayout {
 }
 
 impl AttrHelpersForLayout for Attr {
+    #[inline]
     unsafe fn value_ref_forever(&self) -> &'static str {
         // cast to point to T in RefCell<T> directly
         let value = mem::transmute::<&RefCell<AttrValue>, &AttrValue>(self.value.deref());
         value.as_slice()
     }
 
+    #[inline]
     unsafe fn value_atom_forever(&self) -> Option<Atom> {
         // cast to point to T in RefCell<T> directly
         let value = mem::transmute::<&RefCell<AttrValue>, &AttrValue>(self.value.deref());
@@ -208,6 +210,7 @@ impl AttrHelpersForLayout for Attr {
         }
     }
 
+    #[inline]
     unsafe fn value_tokens_forever(&self) -> Option<Items<Atom>> {
         // cast to point to T in RefCell<T> directly
         let value = mem::transmute::<&RefCell<AttrValue>, &AttrValue>(self.value.deref());
@@ -217,6 +220,7 @@ impl AttrHelpersForLayout for Attr {
         }
     }
 
+    #[inline]
     unsafe fn local_name_atom_forever(&self) -> Atom {
         self.local_name.clone()
     }
