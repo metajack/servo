@@ -106,7 +106,7 @@ impl SelectorMap {
             None => {}
         }
 
-        match element.get_attr(&namespace::Null, "class") {
+        match element.get_attr(&namespace::Null, &satom!(class)) {
             Some(ref class_attr) => {
                 // FIXME: Store classes pre-split as atoms to make the loop below faster.
                 for class in class_attr.split(SELECTOR_WHITESPACE) {
@@ -710,7 +710,7 @@ pub fn matches_simple_selector<E:TElement,
         // TODO: cache and intern class names on elements.
         ClassSelector(ref class) => {
             let element = element.as_element();
-            element.has_class(class.as_slice())
+            element.has_class(class)
         }
 
         AttrExists(ref attr) => {
@@ -854,6 +854,7 @@ pub fn matches_simple_selector<E:TElement,
     }
 }
 
+#[inline]
 fn url_is_visited(_url: &str) -> bool {
     // FIXME: implement this.
     // This function will probably need to take a "session"
