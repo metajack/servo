@@ -12,7 +12,6 @@ use context::LayoutContext;
 use floats::ClearType;
 use flow;
 use flow::Flow;
-use flow_ref::FlowRef;
 use incremental::{self, RestyleDamage};
 use inline::{InlineFragmentContext, InlineFragmentNodeInfo, InlineMetrics};
 use layout_debug;
@@ -238,11 +237,11 @@ pub enum GeneratedContentInfo {
 /// can clone it.
 #[derive(Clone)]
 pub struct InlineAbsoluteHypotheticalFragmentInfo {
-    pub flow_ref: FlowRef,
+    pub flow_ref: Arc<Flow>,
 }
 
 impl InlineAbsoluteHypotheticalFragmentInfo {
-    pub fn new(flow_ref: FlowRef) -> InlineAbsoluteHypotheticalFragmentInfo {
+    pub fn new(flow_ref: Arc<Flow>) -> InlineAbsoluteHypotheticalFragmentInfo {
         InlineAbsoluteHypotheticalFragmentInfo {
             flow_ref: flow_ref,
         }
@@ -251,15 +250,15 @@ impl InlineAbsoluteHypotheticalFragmentInfo {
 
 /// A fragment that represents an inline-block element.
 ///
-/// FIXME(pcwalton): Stop leaking this `FlowRef` to layout; that is not memory safe because layout
+/// FIXME(pcwalton): Stop leaking this `Arc<Flow>` to layout; that is not memory safe because layout
 /// can clone it.
 #[derive(Clone)]
 pub struct InlineBlockFragmentInfo {
-    pub flow_ref: FlowRef,
+    pub flow_ref: Arc<Flow>,
 }
 
 impl InlineBlockFragmentInfo {
-    pub fn new(flow_ref: FlowRef) -> InlineBlockFragmentInfo {
+    pub fn new(flow_ref: Arc<Flow>) -> InlineBlockFragmentInfo {
         InlineBlockFragmentInfo {
             flow_ref: flow_ref,
         }
@@ -269,15 +268,15 @@ impl InlineBlockFragmentInfo {
 /// An inline fragment that establishes an absolute containing block for its descendants (i.e.
 /// a positioned inline fragment).
 ///
-/// FIXME(pcwalton): Stop leaking this `FlowRef` to layout; that is not memory safe because layout
+/// FIXME(pcwalton): Stop leaking this `Arc<Flow>` to layout; that is not memory safe because layout
 /// can clone it.
 #[derive(Clone)]
 pub struct InlineAbsoluteFragmentInfo {
-    pub flow_ref: FlowRef,
+    pub flow_ref: Arc<Flow>,
 }
 
 impl InlineAbsoluteFragmentInfo {
-    pub fn new(flow_ref: FlowRef) -> InlineAbsoluteFragmentInfo {
+    pub fn new(flow_ref: Arc<Flow>) -> InlineAbsoluteFragmentInfo {
         InlineAbsoluteFragmentInfo {
             flow_ref: flow_ref,
         }

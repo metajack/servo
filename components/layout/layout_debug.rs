@@ -7,14 +7,14 @@
 
 #![macro_use]
 
-use flow_ref::FlowRef;
-use flow;
+use flow::{self, Flow};
 use rustc_serialize::json;
 
 use std::borrow::ToOwned;
 use std::cell::RefCell;
 use std::io::Write;
 use std::fs::File;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 thread_local!(static STATE_KEY: RefCell<Option<State>> = RefCell::new(None));
@@ -54,7 +54,7 @@ impl ScopeData {
 }
 
 struct State {
-    flow_root: FlowRef,
+    flow_root: Arc<Flow>,
     scope_stack: Vec<Box<ScopeData>>,
 }
 
@@ -102,7 +102,7 @@ pub fn generate_unique_debug_id() -> u16 {
 
 /// Begin a layout debug trace. If this has not been called,
 /// creating debug scopes has no effect.
-pub fn begin_trace(flow_root: FlowRef) {
+pub fn begin_trace(flow_root: Arc<Flow>) {
     assert!(STATE_KEY.with(|ref r| r.borrow().is_none()));
 
     STATE_KEY.with(|ref r| {

@@ -3,23 +3,23 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 use flow::Flow;
-use flow_ref::FlowRef;
 
 use std::collections::{linked_list, LinkedList};
+use std::sync::Arc;
 
 // This needs to be reworked now that we have dynamically-sized types in Rust.
 // Until then, it's just a wrapper around LinkedList.
 
 pub struct FlowList {
-    flows: LinkedList<FlowRef>,
+    flows: LinkedList<Arc<Flow>>,
 }
 
 pub struct FlowListIterator<'a> {
-    it: linked_list::Iter<'a, FlowRef>,
+    it: linked_list::Iter<'a, Arc<Flow>>,
 }
 
 pub struct MutFlowListIterator<'a> {
-    it: linked_list::IterMut<'a, FlowRef>,
+    it: linked_list::IterMut<'a, Arc<Flow>>,
 }
 
 impl FlowList {
@@ -52,21 +52,21 @@ impl FlowList {
     /// Add an element first in the list
     ///
     /// O(1)
-    pub fn push_front(&mut self, new_head: FlowRef) {
+    pub fn push_front(&mut self, new_head: Arc<Flow>) {
         self.flows.push_front(new_head);
     }
 
     /// Remove the first element and return it, or None if the list is empty
     ///
     /// O(1)
-    pub fn pop_front(&mut self) -> Option<FlowRef> {
+    pub fn pop_front(&mut self) -> Option<Arc<Flow>> {
         self.flows.pop_front()
     }
 
     /// Add an element last in the list
     ///
     /// O(1)
-    pub fn push_back(&mut self, new_tail: FlowRef) {
+    pub fn push_back(&mut self, new_tail: Arc<Flow>) {
         self.flows.push_back(new_tail);
     }
 

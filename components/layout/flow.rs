@@ -31,7 +31,6 @@ use context::LayoutContext;
 use display_list_builder::DisplayListBuildingResult;
 use floats::Floats;
 use flow_list::{FlowList, FlowListIterator, MutFlowListIterator};
-use flow_ref::{FlowRef, WeakFlowRef};
 use fragment::{Fragment, FragmentBorderBoxIterator, SpecificFragmentInfo};
 use incremental::{self, RECONSTRUCT_FLOW, REFLOW, REFLOW_OUT_OF_FLOW, RestyleDamage};
 use inline::InlineFlow;
@@ -57,7 +56,7 @@ use std::iter::Zip;
 use std::mem;
 use std::raw;
 use std::slice::IterMut;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use style::computed_values::{clear, empty_cells, float, position, text_align};
 use style::properties::ComputedValues;
@@ -432,7 +431,7 @@ pub trait ImmutableFlowUtils {
     fn need_anonymous_flow(self, child: &Flow) -> bool;
 
     /// Generates missing child flow of this flow.
-    fn generate_missing_child_flow(self, node: &ThreadSafeLayoutNode) -> FlowRef;
+    fn generate_missing_child_flow(self, node: &ThreadSafeLayoutNode) -> Arc<Flow>;
 
     /// Returns true if this flow contains fragments that are roots of an absolute flow tree.
     fn contains_roots_of_absolute_flow_tree(&self) -> bool;
@@ -694,9 +693,9 @@ impl FlowFlags {
 /// Also, details about their position wrt this flow.
 #[derive(Clone)]
 pub struct Descendants {
-    /// Links to every descendant. This must be private because it is unsafe to leak `FlowRef`s to
+    /// Links to every descendant. This must be private because it is unsafe to leak `Arc<Flow>`s to
     /// layout.
-    descendant_links: Vec<FlowRef>,
+    descendant_links: Vec<Arc<Flow>>,
 }
 
 impl Descendants {
@@ -714,7 +713,7 @@ impl Descendants {
         self.descendant_links.is_empty()
     }
 
-    pub fn push(&mut self, given_descendant: FlowRef) {
+    pub fn push(&mut self, given_descendant: Arc<Flow>) {
         self.descendant_links.push(given_descendant);
     }
 
@@ -738,7 +737,7 @@ impl Descendants {
 pub type AbsDescendants = Descendants;
 
 pub struct DescendantIter<'a> {
-    iter: IterMut<'a, FlowRef>,
+    iter: IterMut<'a, Arc<Flow>>,
 }
 
 impl<'a> Iterator for DescendantIter<'a> {
@@ -1187,27 +1186,26 @@ impl<'a> ImmutableFlowUtils for &'a (Flow + 'a) {
     }
 
     /// Generates missing child flow of this flow.
-    fn generate_missing_child_flow(self, node: &ThreadSafeLayoutNode) -> FlowRef {
+    fn generate_missing_child_flow(self, node: &ThreadSafeLayoutNode) -> Arc<Flow> {
         let flow = match self.class() {
             FlowClass::Table | FlowClass::TableRowGroup => {
                 let fragment =
                     Fragment::new_anonymous_from_specific_info(node,
                                                                SpecificFragmentInfo::TableRow);
-                box TableRowFlow::from_node_and_fragment(node, fragment) as Box<Flow>
+                TableRowFlow::from_node_and_fragment(node, fragment)
             },
             FlowClass::TableRow => {
                 let fragment =
                     Fragment::new_anonymous_from_specific_info(node,
                                                                SpecificFragmentInfo::TableCell);
                 let hide = node.style().get_inheritedtable().empty_cells == empty_cells::T::hide;
-                box TableCellFlow::from_node_fragment_and_visibility_flag(node, fragment, !hide) as
-                    Box<Flow>
+                TableCellFlow::from_node_fragment_and_visibility_flag(node, fragment, !hide)
             },
             _ => {
                 panic!("no need to generate a missing child")
             }
         };
-        FlowRef::new(flow)
+        Arc::new(flow)
     }
 
     /// Returns true if this flow contains fragments that are roots of an absolute flow tree.
@@ -1338,13 +1336,13 @@ impl<'a> MutableFlowUtils for &'a mut (Flow + 'a) {
     }
 }
 
-impl MutableOwnedFlowUtils for FlowRef {
+impl MutableOwnedFlowUtils for Arc<Flow> {
     /// Set absolute descendants for this flow.
     ///
     /// Set yourself as the Containing Block for all the absolute descendants.
     ///
     /// This is called during flow construction, so nothing else can be accessing the descendant
-    /// flows. This is enforced by the fact that we have a mutable `FlowRef`, which only flow
+    /// flows. This is enforced by the fact that we have a mutable `Arc<Flow>`, which only flow
     /// construction is allowed to possess.
     fn set_absolute_descendants(&mut self, abs_descendants: AbsDescendants) {
         let this = self.clone();
@@ -1367,7 +1365,7 @@ impl MutableOwnedFlowUtils for FlowRef {
 /// FIXME(pcwalton): I think this would be better with a borrow flag instead of `unsafe`.
 pub struct ContainingBlockLink {
     /// The pointer up to the containing block.
-    link: Option<WeakFlowRef>,
+    link: Option<Weak<Flow>>,
 }
 
 impl ContainingBlockLink {
@@ -1377,12 +1375,12 @@ impl ContainingBlockLink {
         }
     }
 
-    fn set(&mut self, link: FlowRef) {
+    fn set(&mut self, link: Arc<Flow>) {
         self.link = Some(link.downgrade())
     }
 
     #[allow(unsafe_code)]
-    pub unsafe fn get<'a>(&'a mut self) -> &'a mut Option<WeakFlowRef> {
+    pub unsafe fn get<'a>(&'a mut self) -> &'a mut Option<Weak<Flow>> {
         &mut self.link
     }
 

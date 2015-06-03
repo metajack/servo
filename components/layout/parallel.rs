@@ -11,7 +11,6 @@
 use context::{LayoutContext, SharedLayoutContextWrapper, SharedLayoutContext};
 use flow::{Flow, MutableFlowUtils, PreorderFlowTraversal, PostorderFlowTraversal};
 use flow;
-use flow_ref::FlowRef;
 use data::{LayoutDataAccess, LayoutDataWrapper};
 use traversal::{BubbleISizes, AssignISizes, AssignBSizesAndStoreOverflow};
 use traversal::{ComputeAbsolutePositions, BuildDisplayList};
@@ -23,6 +22,7 @@ use wrapper::{PreorderDomTraversal, PostorderDomTraversal};
 use profile_traits::time::{self, ProfilerMetadata, profile};
 use std::mem;
 use std::ptr;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicIsize, Ordering};
 use util::opts;
 use util::workqueue::{WorkQueue, WorkUnit, WorkerProxy};
@@ -41,13 +41,13 @@ fn null_unsafe_flow() -> UnsafeFlow {
     (0, 0)
 }
 
-pub fn owned_flow_to_unsafe_flow(flow: *const FlowRef) -> UnsafeFlow {
+pub fn owned_flow_to_unsafe_flow(flow: *const Arc<Flow>) -> UnsafeFlow {
     unsafe {
         mem::transmute_copy(&*flow)
     }
 }
 
-pub fn mut_owned_flow_to_unsafe_flow(flow: *mut FlowRef) -> UnsafeFlow {
+pub fn mut_owned_flow_to_unsafe_flow(flow: *mut Arc<Flow>) -> UnsafeFlow {
     unsafe {
         mem::transmute_copy(&*flow)
     }
@@ -221,7 +221,7 @@ trait ParallelPostorderFlowTraversal : PostorderFlowTraversal {
         loop {
             unsafe {
                 // Get a real flow.
-                let flow: &mut FlowRef = mem::transmute(&mut unsafe_flow);
+                let flow: &mut Arc<Flow> = mem::transmute(&mut unsafe_flow);
 
                 // Perform the appropriate traversal.
                 if self.should_process(&mut **flow) {
@@ -245,7 +245,7 @@ trait ParallelPostorderFlowTraversal : PostorderFlowTraversal {
                 // No, we're not at the root yet. Then are we the last child
                 // of our parent to finish processing? If so, we can continue
                 // on with our parent; otherwise, we've gotta wait.
-                let parent: &mut FlowRef = mem::transmute(&mut unsafe_parent);
+                let parent: &mut Arc<Flow> = mem::transmute(&mut unsafe_parent);
                 let parent_base = flow::mut_base(&mut **parent);
                 if parent_base.parallel.children_count.fetch_sub(1, Ordering::SeqCst) == 1 {
                     // We were the last child of our parent. Reflow our parent.
@@ -276,7 +276,7 @@ trait ParallelPreorderFlowTraversal : PreorderFlowTraversal {
         let mut had_children = false;
         unsafe {
             // Get a real flow.
-            let flow: &mut FlowRef = mem::transmute(&mut unsafe_flow);
+            let flow: &mut Arc<Flow> = mem::transmute(&mut unsafe_flow);
 
             if self.should_record_thread_ids() {
                 flow::mut_base(&mut **flow).thread_id = proxy.worker_index();
@@ -430,7 +430,7 @@ pub fn traverse_dom_preorder(root: LayoutNode,
     queue.data = SharedLayoutContextWrapper(ptr::null());
 }
 
-pub fn traverse_flow_tree_preorder(root: &mut FlowRef,
+pub fn traverse_flow_tree_preorder(root: &mut Arc<Flow>,
                                    profiler_metadata: ProfilerMetadata,
                                    time_profiler_chan: time::ProfilerChan,
                                    shared_layout_context: &SharedLayoutContext,
@@ -456,7 +456,7 @@ pub fn traverse_flow_tree_preorder(root: &mut FlowRef,
     queue.data = SharedLayoutContextWrapper(ptr::null())
 }
 
-pub fn build_display_list_for_subtree(root: &mut FlowRef,
+pub fn build_display_list_for_subtree(root: &mut Arc<Flow>,
                                       profiler_metadata: ProfilerMetadata,
                                       time_profiler_chan: time::ProfilerChan,
                                       shared_layout_context: &SharedLayoutContext,

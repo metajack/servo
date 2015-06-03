@@ -14,7 +14,6 @@ use css::node_style::StyledNode;
 use data::{LayoutDataAccess, LayoutDataWrapper};
 use display_list_builder::ToGfxColor;
 use flow::{self, Flow, ImmutableFlowUtils, MutableFlowUtils, MutableOwnedFlowUtils};
-use flow_ref::FlowRef;
 use fragment::{Fragment, FragmentBorderBoxIterator};
 use incremental::{LayoutDamageComputation, REFLOW, REFLOW_ENTIRE_DOCUMENT, REPAINT};
 use layout_debug;
@@ -92,7 +91,7 @@ const DISPLAY_PORT_THRESHOLD_SIZE_FACTOR: i32 = 4;
 /// This needs to be protected by a mutex so we can do fast RPCs.
 pub struct LayoutTaskData {
     /// The root of the flow tree.
-    pub root_flow: Option<FlowRef>,
+    pub root_flow: Option<Arc<Flow>>,
 
     /// The image cache.
     pub image_cache_task: ImageCacheTask,
@@ -691,7 +690,7 @@ impl LayoutTask {
         LayoutTask::return_rw_data(possibly_locked_rw_data, rw_data);
     }
 
-    fn try_get_layout_root(&self, node: LayoutNode) -> Option<FlowRef> {
+    fn try_get_layout_root(&self, node: LayoutNode) -> Option<Arc<Flow>> {
         let mut layout_data_ref = node.mutate_layout_data();
         let layout_data =
             match layout_data_ref.as_mut() {
@@ -719,7 +718,7 @@ impl LayoutTask {
         Some(flow)
     }
 
-    fn get_layout_root(&self, node: LayoutNode) -> FlowRef {
+    fn get_layout_root(&self, node: LayoutNode) -> Arc<Flow> {
         self.try_get_layout_root(node).expect("no layout root")
     }
 
@@ -729,7 +728,7 @@ impl LayoutTask {
     /// benchmarked against those two. It is marked `#[inline(never)]` to aid profiling.
     #[inline(never)]
     fn solve_constraints<'a>(&self,
-                         layout_root: &mut FlowRef,
+                         layout_root: &mut Arc<Flow>,
                          shared_layout_context: &SharedLayoutContext) {
         let _scope = layout_debug_scope!("solve_constraints");
         sequential::traverse_flow_tree_preorder(layout_root, shared_layout_context);
@@ -742,7 +741,7 @@ impl LayoutTask {
     #[inline(never)]
     fn solve_constraints_parallel(&self,
                                   rw_data: &mut LayoutTaskData,
-                                  layout_root: &mut FlowRef,
+                                  layout_root: &mut Arc<Flow>,
                                   shared_layout_context: &SharedLayoutContext) {
         let _scope = layout_debug_scope!("solve_constraints_parallel");
 
@@ -764,18 +763,18 @@ impl LayoutTask {
     /// This is only on in debug builds.
     #[inline(never)]
     #[cfg(debug)]
-    fn verify_flow_tree(&self, layout_root: &mut FlowRef) {
+    fn verify_flow_tree(&self, layout_root: &mut Arc<Flow>) {
         let mut traversal = traversal::FlowTreeVerification;
         layout_root.traverse_preorder(&mut traversal);
     }
 
     #[cfg(not(debug))]
-    fn verify_flow_tree(&self, _: &mut FlowRef) {
+    fn verify_flow_tree(&self, _: &mut Arc<Flow>) {
     }
 
     fn process_content_box_request<'a>(&'a self,
                                        requested_node: TrustedNodeAddress,
-                                       layout_root: &mut FlowRef,
+                                       layout_root: &mut Arc<Flow>,
                                        rw_data: &mut RWGuard<'a>) {
         // FIXME(pcwalton): This has not been updated to handle the stacking context relative
         // stuff. So the position is wrong in most cases.
@@ -790,7 +789,7 @@ impl LayoutTask {
 
     fn process_content_boxes_request<'a>(&'a self,
                                          requested_node: TrustedNodeAddress,
-                                         layout_root: &mut FlowRef,
+                                         layout_root: &mut Arc<Flow>,
                                          rw_data: &mut RWGuard<'a>) {
         // FIXME(pcwalton): This has not been updated to handle the stacking context relative
         // stuff. So the position is wrong in most cases.
@@ -802,7 +801,7 @@ impl LayoutTask {
 
     fn compute_abs_pos_and_build_display_list<'a>(&'a self,
                                                   data: &Reflow,
-                                                  layout_root: &mut FlowRef,
+                                                  layout_root: &mut Arc<Flow>,
                                                   shared_layout_context: &mut SharedLayoutContext,
                                                   rw_data: &mut LayoutTaskData) {
         let writing_mode = flow::base(&**layout_root).writing_mode;

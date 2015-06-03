@@ -7,7 +7,6 @@
 use context::{LayoutContext, SharedLayoutContext};
 use flow::{self, Flow, ImmutableFlowUtils, InorderFlowTraversal, MutableFlowUtils};
 use flow::{PostorderFlowTraversal, PreorderFlowTraversal};
-use flow_ref::FlowRef;
 use fragment::FragmentBorderBoxIterator;
 use generated_content::ResolveGeneratedContent;
 use traversal::{BubbleISizes, RecalcStyleForNode, ConstructFlows};
@@ -20,6 +19,8 @@ use wrapper::{PreorderDomTraversal, PostorderDomTraversal};
 use geom::point::Point2D;
 use util::geometry::{Au, ZERO_POINT};
 use util::opts;
+
+use std::sync::Arc;
 
 pub fn traverse_dom_preorder(root: LayoutNode,
                              shared_layout_context: &SharedLayoutContext) {
@@ -40,7 +41,7 @@ pub fn traverse_dom_preorder(root: LayoutNode,
     doit(root, recalc_style, construct_flows);
 }
 
-pub fn resolve_generated_content(root: &mut FlowRef, shared_layout_context: &SharedLayoutContext) {
+pub fn resolve_generated_content(root: &mut Arc<Flow>, shared_layout_context: &SharedLayoutContext) {
     fn doit(flow: &mut Flow, level: u32, traversal: &mut ResolveGeneratedContent) {
         if !traversal.should_process(flow) {
             return
@@ -58,7 +59,7 @@ pub fn resolve_generated_content(root: &mut FlowRef, shared_layout_context: &Sha
     doit(&mut **root, 0, &mut traversal)
 }
 
-pub fn traverse_flow_tree_preorder(root: &mut FlowRef,
+pub fn traverse_flow_tree_preorder(root: &mut Arc<Flow>,
                                    shared_layout_context: &SharedLayoutContext) {
     fn doit(flow: &mut Flow,
             assign_inline_sizes: AssignISizes,
@@ -94,7 +95,7 @@ pub fn traverse_flow_tree_preorder(root: &mut FlowRef,
     doit(root, assign_inline_sizes, assign_block_sizes);
 }
 
-pub fn build_display_list_for_subtree(root: &mut FlowRef,
+pub fn build_display_list_for_subtree(root: &mut Arc<Flow>,
                                       shared_layout_context: &SharedLayoutContext) {
     fn doit(flow: &mut Flow,
             compute_absolute_positions: ComputeAbsolutePositions,
@@ -119,7 +120,7 @@ pub fn build_display_list_for_subtree(root: &mut FlowRef,
     doit(&mut **root, compute_absolute_positions, build_display_list);
 }
 
-pub fn iterate_through_flow_tree_fragment_border_boxes(root: &mut FlowRef,
+pub fn iterate_through_flow_tree_fragment_border_boxes(root: &mut Arc<Flow>,
                                                        iterator: &mut FragmentBorderBoxIterator) {
     fn doit(flow: &mut Flow,
             iterator: &mut FragmentBorderBoxIterator,

@@ -22,7 +22,6 @@ use flow::{Descendants, AbsDescendants};
 use flow::{Flow, ImmutableFlowUtils, MutableFlowUtils, MutableOwnedFlowUtils};
 use flow::{IS_ABSOLUTELY_POSITIONED};
 use flow;
-use flow_ref::FlowRef;
 use fragment::{Fragment, GeneratedContentInfo, IframeFragmentInfo};
 use fragment::{CanvasFragmentInfo, ImageFragmentInfo, InlineAbsoluteFragmentInfo};
 use fragment::{InlineAbsoluteHypotheticalFragmentInfo, TableColumnFragmentInfo};
@@ -71,7 +70,7 @@ pub enum ConstructionResult {
     /// This node contributed a flow at the proper position in the tree.
     /// Nothing more needs to be done for this node. It has bubbled up fixed
     /// and absolute descendant flows that have a containing block above it.
-    Flow(FlowRef, AbsDescendants),
+    Flow(Arc<Flow>, AbsDescendants),
 
     /// This node contributed some object or objects that will be needed to construct a proper flow
     /// later up the tree, but these objects have not yet found their home.
@@ -156,7 +155,7 @@ pub struct InlineBlockSplit {
     pub predecessors: IntermediateInlineFragments,
 
     /// The flow that caused this {ib} split.
-    pub flow: FlowRef,
+    pub flow: Arc<Flow>,
 }
 
 /// Holds inline fragments and absolute descendants.
@@ -334,8 +333,8 @@ impl<'a> FlowConstructor<'a> {
 
     /// Generates anonymous table objects per CSS 2.1 § 17.2.1.
     fn generate_anonymous_table_flows_if_necessary(&mut self,
-                                                   flow: &mut FlowRef,
-                                                   child: &mut FlowRef,
+                                                   flow: &mut Arc<Flow>,
+                                                   child: &mut Arc<Flow>,
                                                    child_node: &ThreadSafeLayoutNode) {
         if !flow.is_block_flow() {
             return
@@ -343,16 +342,16 @@ impl<'a> FlowConstructor<'a> {
 
         if child.is_table_cell() {
             let fragment = Fragment::new(child_node, SpecificFragmentInfo::TableRow);
-            let mut new_child = FlowRef::new(box TableRowFlow::from_node_and_fragment(child_node,
-                                                                                      fragment));
+            let mut new_child: Arc<Flow> = Arc::new(TableRowFlow::from_node_and_fragment(child_node,
+                                                                                         fragment));
             new_child.add_new_child(child.clone());
             child.finish();
             *child = new_child
         }
         if child.is_table_row() || child.is_table_rowgroup() {
             let fragment = Fragment::new(child_node, SpecificFragmentInfo::Table);
-            let mut new_child = FlowRef::new(box TableFlow::from_node_and_fragment(child_node,
-                                                                                   fragment));
+            let mut new_child = Arc::new(TableFlow::from_node_and_fragment(child_node,
+                                                                           fragment));
             new_child.add_new_child(child.clone());
             child.finish();
             *child = new_child
@@ -360,9 +359,9 @@ impl<'a> FlowConstructor<'a> {
         if child.is_table() {
             let fragment = Fragment::new(child_node, SpecificFragmentInfo::TableWrapper);
             let mut new_child =
-                FlowRef::new(box TableWrapperFlow::from_node_and_fragment(child_node,
-                                                                          fragment,
-                                                                          None));
+                Arc::new(TableWrapperFlow::from_node_and_fragment(child_node,
+                                                                  fragment,
+                                                                  None));
             new_child.add_new_child(child.clone());
             child.finish();
             *child = new_child
@@ -377,8 +376,8 @@ impl<'a> FlowConstructor<'a> {
     #[inline(always)]
     fn flush_inline_fragments_to_flow_or_list(&mut self,
                                               fragment_accumulator: InlineFragmentsAccumulator,
-                                              flow: &mut FlowRef,
-                                              flow_list: &mut Vec<FlowRef>,
+                                              flow: &mut Arc<Flow>,
+                                              flow_list: &mut Vec<Arc<Flow>>,
                                               whitespace_stripping: WhitespaceStrippingMode,
                                               node: &ThreadSafeLayoutNode) {
         let mut fragments = fragment_accumulator.to_intermediate_inline_fragments();
@@ -426,8 +425,8 @@ impl<'a> FlowConstructor<'a> {
             TextRunScanner::new().scan_for_runs(self.layout_context.font_context(),
                                                 fragments.fragments);
         let mut inline_flow_ref =
-            FlowRef::new(box InlineFlow::from_fragments(scanned_fragments,
-                                                        node.style().writing_mode));
+            Arc::new(InlineFlow::from_fragments(scanned_fragments,
+                                                node.style().writing_mode));
 
         // Add all the inline-block fragments as children of the inline flow.
         for inline_block_flow in inline_block_flows.iter() {
@@ -462,8 +461,8 @@ impl<'a> FlowConstructor<'a> {
     }
 
     fn build_block_flow_using_construction_result_of_child(&mut self,
-                                                           flow: &mut FlowRef,
-                                                           consecutive_siblings: &mut Vec<FlowRef>,
+                                                           flow: &mut Arc<Flow>,
+                                                           consecutive_siblings: &mut Vec<Arc<Flow>>,
                                                            node: &ThreadSafeLayoutNode,
                                                            kid: ThreadSafeLayoutNode,
                                                            inline_fragment_accumulator:
@@ -578,7 +577,7 @@ impl<'a> FlowConstructor<'a> {
     /// splits and absolutely-positioned descendants are handled correctly.
     fn build_flow_for_block_starting_with_fragments(
             &mut self,
-            mut flow: FlowRef,
+            mut flow: Arc<Flow>,
             node: &ThreadSafeLayoutNode,
             initial_fragments: IntermediateInlineFragments)
             -> ConstructionResult {
@@ -648,7 +647,7 @@ impl<'a> FlowConstructor<'a> {
     ///
     /// FIXME(pcwalton): It is not clear to me that there isn't a cleaner way to handle
     /// `<textarea>`.
-    fn build_flow_for_block_like(&mut self, flow: FlowRef, node: &ThreadSafeLayoutNode)
+    fn build_flow_for_block_like(&mut self, flow: Arc<Flow>, node: &ThreadSafeLayoutNode)
                             -> ConstructionResult {
         let mut initial_fragments = IntermediateInlineFragments::new();
         if node.get_pseudo_element_type() != PseudoElementType::Normal ||
@@ -707,11 +706,11 @@ impl<'a> FlowConstructor<'a> {
                             -> ConstructionResult {
         let fragment = self.build_fragment_for_block(node);
         let flow = if node.style().is_multicol() {
-            box MulticolFlow::from_node_and_fragment(node, fragment, float_kind) as Box<Flow>
+            MulticolFlow::from_node_and_fragment(node, fragment, float_kind) as Box<Flow>
         } else {
-            box BlockFlow::from_node_and_fragment(node, fragment, float_kind) as Box<Flow>
+            BlockFlow::from_node_and_fragment(node, fragment, float_kind) as Box<Flow>
         };
-        self.build_flow_for_block_like(FlowRef::new(flow), node)
+        self.build_flow_for_block_like(Arc::new(flow), node)
     }
 
     /// Bubbles up {ib} splits.
@@ -954,7 +953,7 @@ impl<'a> FlowConstructor<'a> {
     /// Places any table captions found under the given table wrapper, if the value of their
     /// `caption-side` property is equal to the given `side`.
     fn place_table_caption_under_table_wrapper_on_side(&mut self,
-                                                       table_wrapper_flow: &mut FlowRef,
+                                                       table_wrapper_flow: &mut Arc<Flow>,
                                                        node: &ThreadSafeLayoutNode,
                                                        side: caption_side::T) {
         // Only flows that are table captions are matched here.
@@ -978,8 +977,8 @@ impl<'a> FlowConstructor<'a> {
     /// Generates an anonymous table flow according to CSS 2.1 § 17.2.1, step 2.
     /// If necessary, generate recursively another anonymous table flow.
     fn generate_anonymous_missing_child(&mut self,
-                                        child_flows: Vec<FlowRef>,
-                                        flow: &mut FlowRef,
+                                        child_flows: Vec<Arc<Flow>>,
+                                        flow: &mut Arc<Flow>,
                                         node: &ThreadSafeLayoutNode) {
         let mut anonymous_flow = flow.generate_missing_child_flow(node);
         let mut consecutive_siblings = vec!();
@@ -1009,13 +1008,13 @@ impl<'a> FlowConstructor<'a> {
     fn build_flow_for_table_wrapper(&mut self, node: &ThreadSafeLayoutNode, float_value: float::T)
                                     -> ConstructionResult {
         let fragment = Fragment::new(node, SpecificFragmentInfo::TableWrapper);
-        let wrapper_flow = box TableWrapperFlow::from_node_and_fragment(
+        let wrapper_flow = TableWrapperFlow::from_node_and_fragment(
             node, fragment, FloatKind::from_property(float_value));
-        let mut wrapper_flow = FlowRef::new(wrapper_flow as Box<Flow>);
+        let mut wrapper_flow = Arc::new(wrapper_flow);
 
         let table_fragment = Fragment::new(node, SpecificFragmentInfo::Table);
-        let table_flow = box TableFlow::from_node_and_fragment(node, table_fragment);
-        let table_flow = FlowRef::new(table_flow as Box<Flow>);
+        let table_flow = TableFlow::from_node_and_fragment(node, table_fragment);
+        let table_flow = Arc::new(table_flow);
 
         // First populate the table flow with its children.
         let construction_result = self.build_flow_for_block_like(table_flow, node);
@@ -1072,8 +1071,8 @@ impl<'a> FlowConstructor<'a> {
     /// with possibly other `BlockFlow`s or `InlineFlow`s underneath it.
     fn build_flow_for_table_caption(&mut self, node: &ThreadSafeLayoutNode) -> ConstructionResult {
         let fragment = self.build_fragment_for_block(node);
-        let flow = box TableCaptionFlow::from_node_and_fragment(node, fragment) as Box<Flow>;
-        self.build_flow_for_block_like(FlowRef::new(flow), node)
+        let flow = TableCaptionFlow::from_node_and_fragment(node, fragment) as Box<Flow>;
+        self.build_flow_for_block_like(Arc::new(flow), node)
     }
 
     /// Builds a flow for a node with `display: table-row-group`. This yields a `TableRowGroupFlow`
@@ -1081,17 +1080,16 @@ impl<'a> FlowConstructor<'a> {
     fn build_flow_for_table_rowgroup(&mut self, node: &ThreadSafeLayoutNode)
                                      -> ConstructionResult {
         let fragment = Fragment::new(node, SpecificFragmentInfo::TableRow);
-        let flow = box TableRowGroupFlow::from_node_and_fragment(node, fragment);
-        let flow = flow as Box<Flow>;
-        self.build_flow_for_block_like(FlowRef::new(flow), node)
+        let flow = TableRowGroupFlow::from_node_and_fragment(node, fragment);
+        self.build_flow_for_block_like(Arc::new(flow), node)
     }
 
     /// Builds a flow for a node with `display: table-row`. This yields a `TableRowFlow` with
     /// possibly other `TableCellFlow`s underneath it.
     fn build_flow_for_table_row(&mut self, node: &ThreadSafeLayoutNode) -> ConstructionResult {
         let fragment = Fragment::new(node, SpecificFragmentInfo::TableRow);
-        let flow = box TableRowFlow::from_node_and_fragment(node, fragment) as Box<Flow>;
-        self.build_flow_for_block_like(FlowRef::new(flow), node)
+        let flow = TableRowFlow::from_node_and_fragment(node, fragment) as Box<Flow>;
+        self.build_flow_for_block_like(Arc::new(flow), node)
     }
 
     /// Builds a flow for a node with `display: table-cell`. This yields a `TableCellFlow` with
@@ -1110,9 +1108,8 @@ impl<'a> FlowConstructor<'a> {
                 position == position::T::fixed
             });
 
-        let flow = box TableCellFlow::from_node_fragment_and_visibility_flag(node, fragment, !hide)
-            as Box<Flow>;
-        self.build_flow_for_block_like(FlowRef::new(flow), node)
+        let flow = TableCellFlow::from_node_fragment_and_visibility_flag(node, fragment, !hide);
+        self.build_flow_for_block_like(Arc::new(flow), node)
     }
 
     /// Builds a flow for a node with `display: list-item`. This yields a `ListItemFlow` with
@@ -1170,14 +1167,14 @@ impl<'a> FlowConstructor<'a> {
                 if let Some(marker_fragment) = marker_fragment {
                     initial_fragments.fragments.push_back(marker_fragment)
                 }
-                box ListItemFlow::from_node_fragments_and_flotation(node,
-                                                                    main_fragment,
-                                                                    None,
-                                                                    flotation)
+                ListItemFlow::from_node_fragments_and_flotation(node,
+                                                                main_fragment,
+                                                                None,
+                                                                flotation)
             }
         };
 
-        self.build_flow_for_block_starting_with_fragments(FlowRef::new(flow as Box<Flow>),
+        self.build_flow_for_block_starting_with_fragments(Arc::new(flow),
                                                           node,
                                                           initial_fragments)
     }
@@ -1221,7 +1218,7 @@ impl<'a> FlowConstructor<'a> {
             col_fragments.push(Fragment::new(node, specific));
         }
         let flow = box TableColGroupFlow::from_node_and_fragments(node, fragment, col_fragments);
-        let mut flow = FlowRef::new(flow as Box<Flow>);
+        let mut flow = Arc::new(flow);
         flow.finish();
 
         ConstructionResult::Flow(flow, Descendants::new())
@@ -1568,7 +1565,7 @@ impl<'ln> ObjectElement<'ln> for ThreadSafeLayoutNode<'ln> {
 pub trait FlowConstructionUtils {
     /// Adds a new flow as a child of this flow. Removes the flow from the given leaf set if
     /// it's present.
-    fn add_new_child(&mut self, new_child: FlowRef);
+    fn add_new_child(&mut self, new_child: Arc<Flow>);
 
     /// Finishes a flow. Once a flow is finished, no more child flows or boxes may be added to it.
     /// This will normally run the bubble-inline-sizes (minimum and preferred -- i.e. intrinsic --
@@ -1579,11 +1576,11 @@ pub trait FlowConstructionUtils {
     fn finish(&mut self);
 }
 
-impl FlowConstructionUtils for FlowRef {
+impl FlowConstructionUtils for Arc<Flow> {
     /// Adds a new flow as a child of this flow. Fails if this flow is marked as a leaf.
     ///
     /// This must not be public because only the layout constructor can do this.
-    fn add_new_child(&mut self, mut new_child: FlowRef) {
+    fn add_new_child(&mut self, mut new_child: Arc<Flow>) {
         {
             let kid_base = flow::mut_base(&mut *new_child);
             kid_base.parallel.parent = parallel::mut_owned_flow_to_unsafe_flow(self);
