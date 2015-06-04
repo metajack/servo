@@ -68,7 +68,7 @@ use util::logical_geometry::{LogicalRect, LogicalSize, WritingMode};
 ///
 /// Note that virtual methods have a cost; we should not overuse them in Servo. Consider adding
 /// methods to `ImmutableFlowUtils` or `MutableFlowUtils` before adding more methods here.
-pub trait Flow: fmt::Debug + Sync + 'static {
+pub trait Flow: fmt::Debug + Sync + Send + 'static {
     // RTTI
     //
     // TODO(pcwalton): Use Rust's RTTI, once that works.
@@ -1187,25 +1187,24 @@ impl<'a> ImmutableFlowUtils for &'a Flow {
 
     /// Generates missing child flow of this flow.
     fn generate_missing_child_flow(self, node: &ThreadSafeLayoutNode) -> Arc<Flow> {
-        let flow = match self.class() {
+        match self.class() {
             FlowClass::Table | FlowClass::TableRowGroup => {
                 let fragment =
                     Fragment::new_anonymous_from_specific_info(node,
                                                                SpecificFragmentInfo::TableRow);
-                TableRowFlow::from_node_and_fragment(node, fragment)
+                Arc::new(TableRowFlow::from_node_and_fragment(node, fragment))
             },
             FlowClass::TableRow => {
                 let fragment =
                     Fragment::new_anonymous_from_specific_info(node,
                                                                SpecificFragmentInfo::TableCell);
                 let hide = node.style().get_inheritedtable().empty_cells == empty_cells::T::hide;
-                TableCellFlow::from_node_fragment_and_visibility_flag(node, fragment, !hide)
+                Arc::new(TableCellFlow::from_node_fragment_and_visibility_flag(node, fragment, !hide))
             },
             _ => {
                 panic!("no need to generate a missing child")
             }
-        };
-        Arc::new(flow)
+        }
     }
 
     /// Returns true if this flow contains fragments that are roots of an absolute flow tree.
@@ -1391,7 +1390,7 @@ impl ContainingBlockLink {
                 panic!("Link to containing block not established; perhaps you forgot to call \
                         `set_absolute_descendants`?")
             }
-            Some(ref mut link) => link.generated_containing_block_size(for_flow),
+            Some(ref mut link) => link.upgrade().unwrap().generated_containing_block_size(for_flow),
         }
     }
 }

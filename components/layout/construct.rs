@@ -705,12 +705,12 @@ impl<'a> FlowConstructor<'a> {
     fn build_flow_for_block(&mut self, node: &ThreadSafeLayoutNode, float_kind: Option<FloatKind>)
                             -> ConstructionResult {
         let fragment = self.build_fragment_for_block(node);
-        let flow = if node.style().is_multicol() {
-            MulticolFlow::from_node_and_fragment(node, fragment, float_kind) as Box<Flow>
+        let flow: Arc<Flow> = if node.style().is_multicol() {
+            Arc::new(MulticolFlow::from_node_and_fragment(node, fragment, float_kind))
         } else {
-            BlockFlow::from_node_and_fragment(node, fragment, float_kind) as Box<Flow>
+            Arc::new(BlockFlow::from_node_and_fragment(node, fragment, float_kind))
         };
-        self.build_flow_for_block_like(Arc::new(flow), node)
+        self.build_flow_for_block_like(flow, node)
     }
 
     /// Bubbles up {ib} splits.
@@ -1010,11 +1010,11 @@ impl<'a> FlowConstructor<'a> {
         let fragment = Fragment::new(node, SpecificFragmentInfo::TableWrapper);
         let wrapper_flow = TableWrapperFlow::from_node_and_fragment(
             node, fragment, FloatKind::from_property(float_value));
-        let mut wrapper_flow = Arc::new(wrapper_flow);
+        let mut wrapper_flow: Arc<Flow> = Arc::new(wrapper_flow);
 
         let table_fragment = Fragment::new(node, SpecificFragmentInfo::Table);
         let table_flow = TableFlow::from_node_and_fragment(node, table_fragment);
-        let table_flow = Arc::new(table_flow);
+        let table_flow: Arc<Flow> = Arc::new(table_flow);
 
         // First populate the table flow with its children.
         let construction_result = self.build_flow_for_block_like(table_flow, node);
@@ -1071,7 +1071,7 @@ impl<'a> FlowConstructor<'a> {
     /// with possibly other `BlockFlow`s or `InlineFlow`s underneath it.
     fn build_flow_for_table_caption(&mut self, node: &ThreadSafeLayoutNode) -> ConstructionResult {
         let fragment = self.build_fragment_for_block(node);
-        let flow = TableCaptionFlow::from_node_and_fragment(node, fragment) as Box<Flow>;
+        let flow = TableCaptionFlow::from_node_and_fragment(node, fragment);
         self.build_flow_for_block_like(Arc::new(flow), node)
     }
 
@@ -1088,7 +1088,7 @@ impl<'a> FlowConstructor<'a> {
     /// possibly other `TableCellFlow`s underneath it.
     fn build_flow_for_table_row(&mut self, node: &ThreadSafeLayoutNode) -> ConstructionResult {
         let fragment = Fragment::new(node, SpecificFragmentInfo::TableRow);
-        let flow = TableRowFlow::from_node_and_fragment(node, fragment) as Box<Flow>;
+        let flow = TableRowFlow::from_node_and_fragment(node, fragment);
         self.build_flow_for_block_like(Arc::new(flow), node)
     }
 
@@ -1158,7 +1158,7 @@ impl<'a> FlowConstructor<'a> {
         let main_fragment = self.build_fragment_for_block(node);
         let flow = match node.style().get_list().list_style_position {
             list_style_position::T::outside => {
-                box ListItemFlow::from_node_fragments_and_flotation(node,
+                 ListItemFlow::from_node_fragments_and_flotation(node,
                                                                     main_fragment,
                                                                     marker_fragment,
                                                                     flotation)
@@ -1217,8 +1217,8 @@ impl<'a> FlowConstructor<'a> {
             let specific = SpecificFragmentInfo::TableColumn(TableColumnFragmentInfo::new(node));
             col_fragments.push(Fragment::new(node, specific));
         }
-        let flow = box TableColGroupFlow::from_node_and_fragments(node, fragment, col_fragments);
-        let mut flow = Arc::new(flow);
+        let flow = TableColGroupFlow::from_node_and_fragments(node, fragment, col_fragments);
+        let mut flow: Arc<Flow> = Arc::new(flow);
         flow.finish();
 
         ConstructionResult::Flow(flow, Descendants::new())

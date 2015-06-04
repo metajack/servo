@@ -22,6 +22,7 @@ use parallel::{self, UnsafeFlow};
 use sequential;
 use wrapper::{LayoutNode, TLayoutNode};
 
+use alloc::arc;
 use azure::azure::AzColor;
 use canvas_traits::CanvasMsg;
 use encoding::EncodingRef;
@@ -1081,10 +1082,11 @@ impl LayoutTask {
                                                                   &self.url,
                                                                   reflow_info.goal);
         let mut root_flow = (*rw_data.root_flow.as_ref().unwrap()).clone();
+        let root_flow = arc::get_mut(&mut root_flow).unwrap();
         profile(time::ProfilerCategory::LayoutStyleRecalc,
                 self.profiler_metadata(),
                 self.time_profiler_chan.clone(),
-                || animation::recalc_style_for_animation(root_flow.deref_mut(), &animation));
+                || animation::recalc_style_for_animation(root_flow, &animation));
 
         self.perform_post_style_recalc_layout_passes(&reflow_info,
                                                      &mut *rw_data,
@@ -1100,10 +1102,10 @@ impl LayoutTask {
                 self.profiler_metadata(),
                 self.time_profiler_chan.clone(),
                 || {
-            if opts::get().nonincremental_layout || root_flow.deref_mut()
-                                                             .compute_layout_damage()
+            let root_flow = arc::get_mut(&mut root_flow).unwrap();
+            if opts::get().nonincremental_layout || root_flow.compute_layout_damage()
                                                              .contains(REFLOW_ENTIRE_DOCUMENT) {
-                root_flow.deref_mut().reflow_entire_document()
+                root_flow.reflow_entire_document()
             }
         });
 
