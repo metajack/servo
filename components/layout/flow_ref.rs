@@ -58,19 +58,19 @@ impl FlowRef {
     }
 }
 
-impl<'a> Deref for FlowRef {
-    type Target = Flow + 'a;
-    fn deref(&self) -> &(Flow + 'a) {
+impl Deref for FlowRef {
+    type Target = Flow;
+    fn deref(&self) -> &Flow {
         unsafe {
-            mem::transmute_copy::<raw::TraitObject, &(Flow + 'a)>(&self.object)
+            mem::transmute_copy::<raw::TraitObject, &Flow>(&self.object)
         }
     }
 }
 
 impl DerefMut for FlowRef {
-    fn deref_mut<'a>(&mut self) -> &mut (Flow + 'a) {
+    fn deref_mut(&mut self) -> &mut Flow {
         unsafe {
-            mem::transmute_copy::<raw::TraitObject, &mut (Flow + 'a)>(&self.object)
+            mem::transmute_copy::<raw::TraitObject, &mut Flow>(&self.object)
         }
     }
 }
@@ -154,18 +154,18 @@ impl WeakFlowRef {
 }
 
 impl<'a> Deref for WeakFlowRef {
-    type Target = Flow + 'a;
-    fn deref(&self) -> &(Flow + 'a) {
+    type Target = Flow;
+    fn deref(&self) -> &Flow {
         unsafe {
-            mem::transmute_copy::<raw::TraitObject, &(Flow + 'a)>(&self.object)
+            mem::transmute_copy::<raw::TraitObject, &Flow>(&self.object)
         }
     }
 }
 
 impl DerefMut for WeakFlowRef {
-    fn deref_mut<'a>(&mut self) -> &mut (Flow + 'a) {
+    fn deref_mut(&mut self) -> &mut Flow {
         unsafe {
-            mem::transmute_copy::<raw::TraitObject, &mut (Flow + 'a)>(&self.object)
+            mem::transmute_copy::<raw::TraitObject, &mut Flow>(&self.object)
         }
     }
 }

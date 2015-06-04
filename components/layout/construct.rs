@@ -424,7 +424,7 @@ impl<'a> FlowConstructor<'a> {
         let scanned_fragments =
             TextRunScanner::new().scan_for_runs(self.layout_context.font_context(),
                                                 fragments.fragments);
-        let mut inline_flow_ref =
+        let mut inline_flow_ref: Arc<Flow> =
             Arc::new(InlineFlow::from_fragments(scanned_fragments,
                                                 node.style().writing_mode));
 

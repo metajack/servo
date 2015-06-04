@@ -741,8 +741,8 @@ pub struct DescendantIter<'a> {
 }
 
 impl<'a> Iterator for DescendantIter<'a> {
-    type Item = &'a mut (Flow + 'a);
-    fn next(&mut self) -> Option<&'a mut (Flow + 'a)> {
+    type Item = &'a mut Flow;
+    fn next(&mut self) -> Option<&'a mut Flow> {
         self.iter.next().map(|flow| &mut **flow)
     }
 }
@@ -1094,7 +1094,7 @@ impl BaseFlow {
     }
 }
 
-impl<'a> ImmutableFlowUtils for &'a (Flow + 'a) {
+impl<'a> ImmutableFlowUtils for &'a Flow {
     /// Returns true if this flow is a block flow or subclass thereof.
     fn is_block_like(self) -> bool {
         match self.class() {
@@ -1276,7 +1276,7 @@ impl<'a> ImmutableFlowUtils for &'a (Flow + 'a) {
     }
 }
 
-impl<'a> MutableFlowUtils for &'a mut (Flow + 'a) {
+impl<'a> MutableFlowUtils for &'a mut Flow {
     /// Traverses the tree in preorder.
     fn traverse_preorder<T:PreorderFlowTraversal>(self, traversal: &T) {
         if traversal.should_process(self) {
