@@ -68,7 +68,7 @@ use util::logical_geometry::{LogicalRect, LogicalSize, WritingMode};
 ///
 /// Note that virtual methods have a cost; we should not overuse them in Servo. Consider adding
 /// methods to `ImmutableFlowUtils` or `MutableFlowUtils` before adding more methods here.
-pub trait Flow: fmt::Debug + Sync {
+pub trait Flow: fmt::Debug + Sync + 'static {
     // RTTI
     //
     // TODO(pcwalton): Use Rust's RTTI, once that works.
