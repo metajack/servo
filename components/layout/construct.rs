@@ -350,15 +350,15 @@ impl<'a> FlowConstructor<'a> {
         }
         if child.is_table_row() || child.is_table_rowgroup() {
             let fragment = Fragment::new(child_node, SpecificFragmentInfo::Table);
-            let mut new_child = Arc::new(TableFlow::from_node_and_fragment(child_node,
-                                                                           fragment));
+            let mut new_child: Arc<Flow> = Arc::new(TableFlow::from_node_and_fragment(child_node,
+                                                                                      fragment));
             new_child.add_new_child(child.clone());
             child.finish();
             *child = new_child
         }
         if child.is_table() {
             let fragment = Fragment::new(child_node, SpecificFragmentInfo::TableWrapper);
-            let mut new_child =
+            let mut new_child: Arc<Flow> =
                 Arc::new(TableWrapperFlow::from_node_and_fragment(child_node,
                                                                   fragment,
                                                                   None));
