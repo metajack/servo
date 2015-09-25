@@ -186,6 +186,7 @@ class Transport(object):
     def connect(self):
         wait_for_port(self.host, self.port, self.port_timeout)
         self._connection = httplib.HTTPConnection(self.host, self.port)
+        self._connection.set_debuglevel(1)
 
     def close_connection(self):
         if self._connection:
