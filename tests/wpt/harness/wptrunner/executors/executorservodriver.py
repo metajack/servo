@@ -36,7 +36,8 @@ class ServoWebDriverProtocol(Protocol):
 
         session_started = False
         try:
-            self.session = webdriver.Session(self.host, self.port)
+            self.session = webdriver.Session(self.host, self.port,
+                                             extension=webdriver.ServoExtensions)
             self.session.start()
         except:
             self.logger.warning(
@@ -81,7 +82,6 @@ class ServoWebDriverProtocol(Protocol):
             except Exception as e:
                 self.logger.error(traceback.format_exc(e))
                 break
-
 
 class ServoWebDriverRun(object):
     def __init__(self, func, session, url, timeout, current_timeout=None):
@@ -137,6 +137,7 @@ class ServoWebDriverTestharnessExecutor(TestharnessExecutor):
         with open(os.path.join(here, "testharness_servodriver.js")) as f:
             self.script = f.read()
         self.timeout = None
+        self.environment = {}
 
     def on_protocol_change(self, new_protocol):
         pass
@@ -180,6 +181,14 @@ class ServoWebDriverTestharnessExecutor(TestharnessExecutor):
         session.back()
         return result
 
+    def on_environment_change(self, new_environment):
+        #Unset all the old prefs
+        self.protocol.session.extension.reset_prefs(*self.environment.get("prefs", {}).keys())
+        self.environment = new_environment
+        self.protocol.session.extension.set_prefs(new_environment.get("prefs", {}))
+
+
+
 
 class TimeoutError(Exception):
     pass
@@ -199,6 +208,7 @@ class ServoWebDriverRefTestExecutor(RefTestExecutor):
                                                capabilities=capabilities)
         self.implementation = RefTestImplementation(self)
         self.timeout = None
+        self.environment = {}
         with open(os.path.join(here, "reftest-wait_servodriver.js")) as f:
             self.wait_script = f.read()
 
@@ -241,3 +251,10 @@ class ServoWebDriverRefTestExecutor(RefTestExecutor):
         session.url = url
         session.execute_async_script(self.wait_script)
         return session.screenshot()
+
+    def on_environment_change(self, new_environment):
+        #Unset all the old prefs
+        self.protocol.session.extension.reset_prefs(*self.environment.get("prefs", {}).keys())
+        self.environment = new_environment
+        self.protocol.session.extension.set_prefs(new_environment.get("prefs", {}))
+
