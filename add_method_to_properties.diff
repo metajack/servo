@@ -1,0 +1,15 @@
+diff --git a/components/style/properties/gecko.mako.rs b/components/style/properties/gecko.mako.rs
+index 108563d..f4d7fee 100644
+--- a/components/style/properties/gecko.mako.rs
++++ b/components/style/properties/gecko.mako.rs
+@@ -187,6 +187,10 @@ impl ComputedValues {
+                  longhands::_moz_top_layer::SpecifiedValue::top)
+     }
+ 
++    pub fn something_always_true(&self) {
++        true
++    }
++
+     // FIXME(bholley): Implement this properly.
+     #[inline]
+     pub fn is_multicol(&self) -> bool { false }
