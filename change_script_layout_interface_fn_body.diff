@@ -1,0 +1,14 @@
+# Pastebin fdBKNabi
+diff --git a/components/script_layout_interface/lib.rs b/components/script_layout_interface/lib.rs
+index 98375e6..99ee33c 100644
+--- a/components/script_layout_interface/lib.rs
++++ b/components/script_layout_interface/lib.rs
+@@ -139,7 +139,7 @@ unsafe impl Send for TrustedNodeAddress {}
+
+ pub fn is_image_data(uri: &str) -> bool {
+     static TYPES: &'static [&'static str] = &["data:image/png", "data:image/gif", "data:image/jpeg"];
+-    TYPES.iter().any(|&type_| uri.starts_with(type_))
++    (TYPES.iter().any(|&type_| uri.starts_with(type_)), 1).0
+ }
+
+ /// Whether the pending image needs to be fetched or is waiting on an existing fetch.
