@@ -65,6 +65,12 @@ all@040-dev-change-script-layout-fn-body-cc:
 	RUSTFLAGS="-Zincremental=${PWD}/incr -Zincremental-cc" \
 		./mach cargo -- rustc -p script $(CARGO_OPTS) -- $(CARGO_RUSTC_OPTS) -Zincremental-info
 
+# measure typical debugging by println case
+all@050-add-println-to-script-event-loop:
+	patch -p1 < add_println_to_script_event_loop.diff
+	RUSTFLAGS="-Zincremental=${PWD}/incr -Zincremental-cc" \
+		./mach cargo -- rustc -p script $(CARGO_OPTS) -- $(CARGO_RUSTC_OPTS) -Zincremental-info
+
 touch:
 	find . -name '*orig' -delete
 	find . -name '*pyc' -delete
@@ -81,4 +87,5 @@ patches:
 		"@010-dev-incr" \
 		"@020-dev-touch-style" \
 		"@030-dev-add-method" \
-		"@040-dev-change-script-layout-fn-body"
+		"@040-dev-change-script-layout-fn-body" \
+		"@050-dev-add-println-to-script-event-loop"

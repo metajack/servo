@@ -1,0 +1,12 @@
+diff --git a/components/script/script_thread.rs b/components/script/script_thread.rs
+index 96167cec23..1b3986463e 100644
+--- a/components/script/script_thread.rs
++++ b/components/script/script_thread.rs
+@@ -897,6 +897,7 @@ impl ScriptThread {
+         // Process the gathered events.
+         for msg in sequential {
+             let category = self.categorize_msg(&msg);
++            println!("processing event msg cat = {:?}", category);
+ 
+             let result = self.profile_event(category, move || {
+                 match msg {
