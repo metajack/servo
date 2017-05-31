@@ -7,7 +7,7 @@ all:
 	echo "try `make measure` etc"
 
 measure:
-	@for N in clean all@000-dev all@010-dev-incr all@020-dev-touch-style all@030-dev-add-method all@040-dev-change-script-layout-fn-body; \
+	@for N in clean all@000-dev all@010-dev-incr all@020-dev-touch-style all@030-dev-add-method all@040-dev-change-script-layout-fn-body all@050-dev-add-println-to-script-event-loop all@060-dev-add-debug-to-style-matching; \
 	do echo ${DATE}: running '`'make $$N'`' ; \
 	make CARGO_RUSTC_OPTS=-Ztime-passes $$N > measurements.${DATE}.$$N 2>&1 ; \
 	tail -1 measurements.${DATE}.$$N ; \
@@ -37,8 +37,21 @@ all@040-dev-change-script-layout-fn-body:
 	RUSTFLAGS="-Zincremental=${PWD}/incr" \
 		./mach cargo -- rustc -p script $(CARGO_OPTS) -- $(CARGO_RUSTC_OPTS) -Zincremental-info
 
+# measure typical debugging by println case
+all@050-dev-add-println-to-script-event-loop:
+	patch -p1 < add_println_to_script_event_loop.diff
+	RUSTFLAGS="-Zincremental=${PWD}/incr" \
+		./mach cargo -- rustc -p script $(CARGO_OPTS) -- $(CARGO_RUSTC_OPTS) -Zincremental-info
+
+# measure adding some debug! to matching.rs
+all@060-dev-add-debug-to-style-matching:
+	patch -p1 < add_debug_to_style_matching.diff
+	RUSTFLAGS="-Zincremental=${PWD}/incr" \
+		./mach cargo -- rustc -p script $(CARGO_OPTS) -- $(CARGO_RUSTC_OPTS) -Zincremental-info
+
+
 measure-cc:
-	@for N in clean all@000-dev all@010-dev-incr-cc all@020-dev-touch-style-cc all@030-dev-add-method-cc all@040-dev-change-script-layout-fn-body-cc; \
+	@for N in clean all@000-dev all@010-dev-incr-cc all@020-dev-touch-style-cc all@030-dev-add-method-cc all@040-dev-change-script-layout-fn-body-cc all@050-add-println-to-script-event-loop all@060-add-debug-to-style-matching; \
 	do echo ${DATE}: running '`'make $$N'`' ; \
 	make CARGO_RUSTC_OPTS=-Ztime-passes $$N > measurements.${DATE}.cc.$$N 2>&1 ; \
 	tail -1 measurements.${DATE}.cc.$$N ; \
@@ -66,8 +79,14 @@ all@040-dev-change-script-layout-fn-body-cc:
 		./mach cargo -- rustc -p script $(CARGO_OPTS) -- $(CARGO_RUSTC_OPTS) -Zincremental-info
 
 # measure typical debugging by println case
-all@050-add-println-to-script-event-loop:
+all@050-dev-add-println-to-script-event-loop-cc:
 	patch -p1 < add_println_to_script_event_loop.diff
+	RUSTFLAGS="-Zincremental=${PWD}/incr -Zincremental-cc" \
+		./mach cargo -- rustc -p script $(CARGO_OPTS) -- $(CARGO_RUSTC_OPTS) -Zincremental-info
+
+# measure adding some debug! to matching.rs
+all@060-dev-add-debug-to-style-matching-cc:
+	patch -p1 < add_debug_to_style_matching.diff
 	RUSTFLAGS="-Zincremental=${PWD}/incr -Zincremental-cc" \
 		./mach cargo -- rustc -p script $(CARGO_OPTS) -- $(CARGO_RUSTC_OPTS) -Zincremental-info
 
@@ -88,4 +107,5 @@ patches:
 		"@020-dev-touch-style" \
 		"@030-dev-add-method" \
 		"@040-dev-change-script-layout-fn-body" \
-		"@050-dev-add-println-to-script-event-loop"
+		"@050-dev-add-println-to-script-event-loop" \
+		"@060-dev-add-debug-to-style-matching"

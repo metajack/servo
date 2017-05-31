@@ -1,0 +1,13 @@
+diff --git a/components/style/matching.rs b/components/style/matching.rs
+index 72b98a9d15..b3696a0b7b 100644
+--- a/components/style/matching.rs
++++ b/components/style/matching.rs
+@@ -199,6 +199,8 @@ fn element_matches_candidate<E: TElement>(element: &E,
+     debug_assert!(data.has_current_styles());
+     let current_styles = data.styles();
+ 
++    debug!("Sharing style between {:?} and {:?}", element, candidate_element);
++
+     Ok(current_styles.primary.clone())
+ }
+ 
